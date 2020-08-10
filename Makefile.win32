@@ -1,0 +1,27 @@
+CC			= gcc
+LINK			= gcc
+
+CC_FLAGS		= -g -Wall -c
+LINK_FLAGS		= -g
+
+EX_EXTENSION		= .exe
+
+TARGET			= crfun$(EX_EXTENSION)
+
+OBJS			= $(sort main.o String.o MemoryManager.o FileUtils.o)
+
+%.o			: %.c
+			  @echo [CC] $@
+			  @$(CC) $(CC_FLAGS) $<
+
+$(TARGET)		: $(OBJS)
+			  @echo [LD] $@
+			  @$(LINK) $(LINK_FLAGS) -o $(TARGET) $(OBJS)
+
+include			  depends.mk
+
+junkclean		:
+			  @rm -rf $(wildcard *~)
+
+clean			: junkclean
+			  @rm -rf $(OBJS) $(TARGET)

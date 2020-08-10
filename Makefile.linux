@@ -1,0 +1,34 @@
+CC			= gcc
+LINK			= gcc
+INSTALL			= install
+
+CC_FLAGS		= -g -Wall -c
+LINK_FLAGS		= -g
+INSTALL_FLAGS		= -s
+
+EX_EXTENSION		= 
+
+TARGET			= cce$(EX_EXTENSION)
+BINDIR			= /usr/local/bin
+
+OBJS			= $(sort main.o String.o MemoryManager.o FileUtils.o)
+
+%.o			: %.c
+			  @echo [CC] $@
+			  @$(CC) $(CC_FLAGS) $<
+
+$(TARGET)		: $(OBJS)
+			  @echo [LD] $@
+			  @$(LINK) $(LINK_FLAGS) -o $(TARGET) $(OBJS)
+
+include			  depends.mk
+
+junkclean		:
+			  @rm -rf $(wildcard *~)
+
+clean			: junkclean
+			  @rm -rf $(OBJS) $(TARGET)
+
+install			: $(TARGET)
+			  $(INSTALL) $(INSTALL_FLAGS) $(TARGET) $(BINDIR)
+
