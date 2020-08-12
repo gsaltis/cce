@@ -140,4 +140,8 @@ StringSizedToInteger
 string
 StringFill(char InChar, int InFillSize);
 
+string
+StringToLowerCase
+(string InString);
+
 #endif /* _string_h_*/

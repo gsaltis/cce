@@ -15,6 +15,7 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
+#include <time.h>
 
 /*****************************************************************************!
  * Local Headers
@@ -28,6 +29,8 @@
 /*****************************************************************************!
  * Local Macros
  *****************************************************************************/
+#define MAIN_DEFAULT_PROJECT_NAME			"NONE"
+#define MAIN_DEFAULT_COPYRIGHT_HOLDER_NAME	"Gregory R Saltis"
 
 /*****************************************************************************!
  * Exported Type : Parameter
@@ -53,6 +56,12 @@ typedef enum _ElementScope ElementScope;
 /*****************************************************************************!
  * Local Data
  *****************************************************************************/
+static string
+MainProjectName = NULL;
+
+static string
+MainCopyrightHolderName = NULL;
+
 static bool
 MainOverwriteFunctionFile;
 
@@ -89,6 +98,17 @@ MainFunctionName;
 static Parameter*
 MainParameters;
 
+static string 
+MainMonths[] = {
+  "January", "February", "March",     "April",   "May",      "June",
+  "July",    "August",   "September", "October", "November", "December"
+};
+
+static string
+MainGlobalHeaders[] = {
+  "stdio.h", "stdlib.h", "string.h", "stdbool.h", "stdint.h"
+};
+ 
 static string
 FunctionHeaderTemplate =
   "/*****************************************************************************!\n"
@@ -103,10 +123,24 @@ MainDataName = NULL;
 
 string
 MainDataType = NULL;
+
+string
+MainNewModuleName = NULL;
+
+bool
+MainCreateModuleDirectory = false;
  
 /*****************************************************************************!
  * Local Functions
  *****************************************************************************/
+void
+MainCreateBlock
+(FILE* InFile, string InBlockText);
+
+void
+MainCreateFileHeader
+(string InFilename, FILE* InFile);
+
 void
 InsertDataDefinition
 (char*** InLines, int* InLinesCount, int InInsertPoint, bool IsExtern);
@@ -187,6 +221,10 @@ void
 MainAddDataDefinition
 ();
 
+void
+MainAddNewModuleItem
+();
+
 /*****************************************************************************!
  * Function : main
  *****************************************************************************/
@@ -201,8 +239,100 @@ main
     MainAddFunctionItem();
   } else if ( MainDataName ) {
     MainAddDataItem();
+  } else if ( MainNewModuleName ) {
+	MainAddNewModuleItem();
   }
   return EXIT_SUCCESS;
+}
+
+/*****************************************************************************!
+ * Function : MainAddNewModuleItem
+ *****************************************************************************/
+void
+MainAddNewModuleItem
+()
+{
+  FILE*									file;
+  string								s, s2;
+  int									i, n;
+
+  file = fopen(MainSourceName, "wb");
+  if ( NULL == file ) {
+	fprintf(stderr, "Could not open %s : %s\n", MainSourceName, strerror(errno));
+	exit(EXIT_FAILURE);
+  }
+  MainCreateFileHeader(MainSourceName, file);
+  fprintf(file, "\n");
+
+  MainCreateBlock(file, "Global Headers");
+  n = sizeof(MainGlobalHeaders) / sizeof(MainGlobalHeaders[0]);
+  for ( i = 0 ; i < n ; i++ ) {
+    fprintf(file, "#include <%s>\n", MainGlobalHeaders[i]);
+  }
+  fprintf(file, "\n");
+
+  MainCreateBlock(file, "Local Headers");
+  fprintf(file, "#include \"%s\"\n", MainHeaderName);
+  fprintf(file, "\n");
+  MainCreateBlock(file, "Local Macros");
+  fprintf(file, "\n");
+  MainCreateBlock(file, "Local Data");
+  fprintf(file, "\n");
+  MainCreateBlock(file, "Local Functions");
+  fprintf(file, "\n");
+ 
+  fclose(file);
+
+  file = fopen(MainHeaderName, "wb");
+  if ( NULL == file ) {
+	fprintf(stderr, "Could not open %s : %s\n", MainHeaderName, strerror(errno));
+	exit(EXIT_FAILURE);
+  }
+  MainCreateFileHeader(MainHeaderName, file);
+  s = StringReplaceChar(MainHeaderName, '.', '_');
+  s2 = StringToLowerCase(s);
+  FreeMemory(s);
+
+  fprintf(file, "#ifndef _%s_\n", s2);
+  fprintf(file, "#define _%s_\n", s2);
+  fprintf(file, "\n");
+  MainCreateBlock(file, "Global Headers");
+  fprintf(file, "\n");
+
+  MainCreateBlock(file, "Local Headers");
+  fprintf(file, "\n");
+  MainCreateBlock(file, "Exported Macros");
+  fprintf(file, "\n");
+  MainCreateBlock(file, "Exported Data");
+  fprintf(file, "\n");
+  MainCreateBlock(file, "Exported Functions");
+  fprintf(file, "\n");
+  fprintf(file, "#endif // _%s_\n", s2);
+
+  fclose(file);
+}
+
+/*****************************************************************************!
+ * Function : MainCreateFileHeader
+ *****************************************************************************/
+void
+MainCreateFileHeader
+(string InFilename, FILE* InFile)
+{
+  time_t								t;
+  struct tm*							tm;
+  char									timeString[64];
+
+  t = time(NULL);
+  tm = localtime(&t);
+  sprintf(timeString, "%s %d %04d", MainMonths[tm->tm_mon], tm->tm_mday, tm->tm_year + 1900);
+
+  fprintf(InFile, "/*****************************************************************************\n");
+  fprintf(InFile, " * FILE NAME    : %s\n", InFilename);
+  fprintf(InFile, " * DATE         : %s\n", timeString);
+  fprintf(InFile, " * PROJECT      : %s\n", MainProjectName); 
+  fprintf(InFile, " * COPYRIGHT    : Copyright (C) %d by %s\n", tm->tm_year + 1900, MainCopyrightHolderName);
+  fprintf(InFile, " *****************************************************************************/\n");
 }
 
 /*****************************************************************************!
@@ -372,6 +502,8 @@ void
 MainInitialize
 ()
 {
+  MainProjectName				= StringCopy(MAIN_DEFAULT_PROJECT_NAME);
+  MainCopyrightHolderName		= StringCopy(MAIN_DEFAULT_COPYRIGHT_HOLDER_NAME);
   MainOverwriteFunctionFile     = false;
   MainFilename                  = NULL;
   MainFunctionName              = NULL;
@@ -457,8 +589,36 @@ ProcessCommandLine
       continue;
     }
 
+    if ( StringEqualsOneOf(command, "-pr", "--project", NULL) ) {
+      i++;
+      if ( i == argc ) {
+        fprintf(stderr, "%s%s is missing a project name%s\n", ColorBrightRed, command, ColorReset);
+        MainDisplayHelp();
+        exit(EXIT_FAILURE);
+      }
+      if ( MainProjectName ) {
+        FreeMemory(MainProjectName);
+      }
+      MainProjectName = StringCopy(argv[i]);
+      continue;
+    }
+
+    if ( StringEqualsOneOf(command, "-co", "--copyrightholder", NULL) ) {
+      i++;
+      if ( i == argc ) {
+        fprintf(stderr, "%s%s is missing a copyright holder name%s\n", ColorBrightRed, command, ColorReset);
+        MainDisplayHelp();
+        exit(EXIT_FAILURE);
+      }
+      if ( MainCopyrightHolderName ) {
+        FreeMemory(MainCopyrightHolderName);
+      }
+      MainCopyrightHolderName = StringCopy(argv[i]);
+      continue;
+    }
+
     //! Specify the data name
-    if ( StringEqualsOneOf(command, "-d", "--data", NULL) ) {
+      if ( StringEqualsOneOf(command, "-d", "--data", NULL) ) {
       i++;
       if ( i == argc ) {
         fprintf(stderr, "%s%s is missing a data name%s\n", ColorBrightRed, command, ColorReset);
@@ -472,6 +632,50 @@ ProcessCommandLine
       continue;
     }
 
+   if ( StringEqualsOneOf(command, "-d", "--data", NULL) ) {
+      i++;
+      if ( i == argc ) {
+        fprintf(stderr, "%s%s is missing a data name%s\n", ColorBrightRed, command, ColorReset);
+        MainDisplayHelp();
+        exit(EXIT_FAILURE);
+      }
+      if ( MainDataName ) {
+        FreeMemory(MainDataName);
+      }
+      MainDataName = StringCopy(argv[i]);
+      continue;
+    }
+
+   if ( StringEqualsOneOf(command, "-d", "--data", NULL) ) {
+      i++;
+      if ( i == argc ) {
+        fprintf(stderr, "%s%s is missing a data name%s\n", ColorBrightRed, command, ColorReset);
+        MainDisplayHelp();
+        exit(EXIT_FAILURE);
+      }
+      if ( MainDataName ) {
+        FreeMemory(MainDataName);
+      }
+      MainDataName = StringCopy(argv[i]);
+      continue;
+    }
+
+    //! Specify the new module name
+    if ( StringEqualsOneOf(command, "-n", "--newmodule", NULL) ) {
+      i++;
+      if ( i == argc ) {
+        fprintf(stderr, "%s%s is missing a module name%s\n", ColorBrightRed, command, ColorReset);
+        MainDisplayHelp();
+        exit(EXIT_FAILURE);
+      }
+      if ( MainNewModuleName ) {
+        FreeMemory(MainNewModuleName);
+      }
+      MainNewModuleName = StringCopy(argv[i]);
+      continue;
+    }
+
+ 
     //! Specify the type (for the data name)
     if ( StringEqualsOneOf(command, "-t", "--datatype", NULL) ) {
       i++;
@@ -519,7 +723,13 @@ ProcessCommandLine
       MainOverwriteFunctionFile = true;
       continue;
     }
-    
+   
+    //!
+	if ( StringEqualsOneOf(command, "-c", "--createmoduledir", NULL) ) {
+	  MainCreateModuleDirectory = true;
+	  continue;
+    }
+ 
     //!
     if ( StringEqualsOneOf(command, "-r", "--returntype", NULL) ) {
       i++;
@@ -584,16 +794,17 @@ VerifyCommandLine
 ()
 {
   //! Must specifiy either funcdtion nammd or data name
-  if ( MainFunctionName == NULL && MainDataName == NULL ) {
-    fprintf(stderr, "%sEither a function name or data name must be specified%s\n",
+  if ( MainFunctionName == NULL && MainDataName == NULL && MainNewModuleName == NULL ) {
+    fprintf(stderr, "%sEither a function name, new module name or data name must be specified%s\n",
             ColorBrightRed, ColorReset);
     MainDisplayHelp();
     exit(EXIT_FAILURE);
   }
 
   //! But can't specify both
-  if ( MainFunctionName && MainDataName ) {
-    fprintf(stderr, "%sOnly a function name or data name can be specified at one time%s\n",
+  
+  if ( ((MainFunctionName ? 1 : 0) + (MainDataName ? 1 : 0) + (MainNewModuleName ? 1 : 0)) != 1) {
+    fprintf(stderr, "%sOnly a function name, new module name or data name can be specified at one time%s\n",
             ColorBrightRed, ColorReset);
     MainDisplayHelp();
     exit(EXIT_FAILURE);
@@ -604,7 +815,20 @@ VerifyCommandLine
     MainHeaderName = StringConcat(MainModuleName, MainHeaderSuffix);
     MainSourceName = StringConcat(MainModuleName, MainSourceSuffix);
   }  
- 
+
+  if ( MainNewModuleName ) {
+    MainHeaderName = StringConcat(MainNewModuleName, MainHeaderSuffix);
+    MainSourceName = StringConcat(MainNewModuleName, MainSourceSuffix);
+	if ( FileExists(MainSourceName) && !MainOverwriteFunctionFile ) {
+	  fprintf(stderr, "%s%s exists%s\n", ColorBrightRed, MainSourceName, ColorReset);
+	  exit(EXIT_FAILURE);
+	}
+	if ( FileExists(MainHeaderName) && !MainOverwriteFunctionFile ) {
+	  fprintf(stderr, "%s%s exists%s\n", ColorBrightRed, MainHeaderName, ColorReset);
+	  exit(EXIT_FAILURE);
+	}
+  }  
+
   if ( MainFunctionName ) {
     //! If we have a module name and it's a directory, prepend the directory name to the output filename
     if ( MainModuleName && FileExists(MainModuleName) ) {
@@ -687,7 +911,9 @@ MainDisplayHelp
   fprintf(stdout, "         -g, --global                  : Specify that the element is global\n");
   fprintf(stdout, "         -d, --data dataname           : Specify the data name\n");
   fprintf(stdout, "         -t, --datatype datatype       : Specify the type of a new data item\n");
+  fprintf(stdout, "         -n, --newmodule modulename    : Specify a new module\n");
   fprintf(stdout, "         -r, --returntype type         : Specify the return type of a function\n");
+  fprintf(stdout, "         -c, --createmoduledir         : Specify the creation of a module directory\n");
 }
 
 /*****************************************************************************!
@@ -968,7 +1194,7 @@ MainInsertFunctionInclude
   string                                filename;
 
   if ( MainModuleName && FileExists(MainModuleName) ) {
-    filename = StringMultiConcat(MainModuleName, DirSeparator, MainSourceName, NULL);
+    filename = StringMultiConcat(MainModuleName, DirSeparator, MainFunctionName, MainSourceSuffix, NULL);
   } else {
     filename = StringCopy(MainSourceName);
   }
@@ -1019,5 +1245,17 @@ CreateFileBackupCopy
 
   FreeMemory(buffer);
   FreeMemory(filename);
+}
+
+/*****************************************************************************!
+ * Function : MainCreateBlock
+ *****************************************************************************/
+void
+MainCreateBlock
+(FILE* InFile, string InBlockText)
+{
+  fprintf(InFile, "/*****************************************************************************!\n");
+  fprintf(InFile, " * %s\n", InBlockText);
+  fprintf(InFile, " *****************************************************************************/\n");
 }
 
