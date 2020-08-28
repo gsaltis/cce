@@ -53,9 +53,24 @@ enum _ElementScope
 };
 typedef enum _ElementScope ElementScope;
 
+
+/*****************************************************************************!
+ * Local Type : FunctionType
+ *****************************************************************************/
+enum _FunctionType
+{
+  FunctionTypeNone					= 0,
+  FunctionTypeC,
+  FunctionTypeJavascript
+};
+typedef enum _FunctionType FunctionType;
+
 /*****************************************************************************!
  * Local Data
  *****************************************************************************/
+static FunctionType
+MainFunctionType = FunctionTypeC;
+
 static string
 MainProjectName = NULL;
 
@@ -76,6 +91,9 @@ MainReturnType;
 
 static string
 MainSourceSuffix = ".c";
+
+static string
+MainJavascriptSuffix = ".js";
 
 static string
 MainHeaderSuffix = ".h";
@@ -207,6 +225,10 @@ MainDisplayHelp
 
 void
 MainWriteFunctionFile
+();
+
+void
+MainWriteJavascriptFunctionFile
 ();
 
 void
@@ -345,12 +367,19 @@ MainAddFunctionItem
   if ( MainSourceName ) {
     CreateFileBackupCopy(MainSourceName);
   }
-  if ( MainHeaderName && MainElementScope == ElementScopeGlobal ) {
-    CreateFileBackupCopy(MainHeaderName);
+  if ( MainFunctionType == FunctionTypeC ) {
+    if ( MainHeaderName && MainElementScope == ElementScopeGlobal ) {
+      CreateFileBackupCopy(MainHeaderName);
+    }
   }
-  MainWriteFunctionFile();
-  MainAddFunctionDeclaration();
-  MainAddFunctionInclude();
+  if ( MainFunctionType == FunctionTypeC ) {
+    MainWriteFunctionFile();
+    MainAddFunctionDeclaration();
+    MainAddFunctionInclude();
+  } else if ( MainFunctionType == FunctionTypeJavascript ) {
+	MainWriteJavascriptFunctionFile();
+  }
+  fprintf(stdout, "%s created\n", MainFilename);
 }
 
 /*****************************************************************************!
@@ -368,6 +397,7 @@ MainAddDataItem
   }
   MainAddDataDeclaration();
   MainAddDataDefinition();
+  fprintf(stdout, "%s created\n", MainDataName);
 }
 
 /*****************************************************************************!
@@ -589,6 +619,10 @@ ProcessCommandLine
       continue;
     }
 
+    if ( StringEqualsOneOf(command, "-j", "--javascript", NULL) ) {
+	  MainFunctionType = FunctionTypeJavascript;
+  	  continue;
+    }
     if ( StringEqualsOneOf(command, "-pr", "--project", NULL) ) {
       i++;
       if ( i == argc ) {
@@ -746,6 +780,24 @@ ProcessCommandLine
     }
 
     //!
+
+    if ( StringEqualsOneOf(command, "-P", "--typelessparameters", NULL) ) {
+      i++;
+      if ( i == argc ) {
+        fprintf(stderr, "%s%s requires parameters%s\n", ColorBrightRed, command, ColorReset);
+        MainDisplayHelp();
+        exit(EXIT_FAILURE);
+      }
+      while (i < argc) {
+        name = argv[i];
+        i++;
+        parameter = ParameterCreate(NULL, name);
+        MainParameters = ParameterAppend(MainParameters, parameter);
+      }
+      break;
+    }
+ 
+    //!
     if ( StringEqualsOneOf(command, "-p", "--parameters", NULL) ) {
       i++;
       if ( i == argc ) {
@@ -832,11 +884,15 @@ VerifyCommandLine
   if ( MainFunctionName ) {
     //! If we have a module name and it's a directory, prepend the directory name to the output filename
     if ( MainModuleName && FileExists(MainModuleName) ) {
-      MainFilename = StringMultiConcat(MainModuleName, DirSeparator, MainFunctionName, MainSourceSuffix, NULL);
+      MainFilename = StringMultiConcat(MainModuleName, DirSeparator, MainFunctionName, NULL);
     } else {
-      MainFilename = StringMultiConcat(MainFunctionName, MainSourceSuffix, NULL);
+      MainFilename = StringMultiConcat(MainFunctionName, NULL);
     }
-
+	if ( MainFunctionType == FunctionTypeC ) {
+	  MainFilename = StringConcatTo(MainFilename, MainSourceSuffix);
+    } else {
+	  MainFilename = StringConcatTo(MainFilename, MainJavascriptSuffix);
+    }
     //! Don't overwrite the old file unless told to
     if ( FileExists(MainFilename) && !MainOverwriteFunctionFile) {
       fprintf(stderr, "%s%s exists%s\n", ColorBrightRed, MainFilename, ColorReset);
@@ -854,7 +910,7 @@ ParameterCreate
 {
   Parameter*                            parameter;
 
-  if ( NULL == InType ) {
+  if ( NULL == InType && NULL == InName ) {
     return NULL;
   }
   
@@ -863,9 +919,15 @@ ParameterCreate
   }
 
   parameter = (Parameter*)GetMemory(sizeof(Parameter));
-  parameter->type = StringCopy(InType);
+  if ( InType ) {
+    parameter->type = StringCopy(InType);
+  } else {
+	parameter->type = NULL;
+  }
   if ( InName ) {
     parameter->name = StringCopy(InName);
+  } else {
+	parameter->name = NULL;
   }
   parameter->next = NULL;
   return parameter;
@@ -901,19 +963,21 @@ MainDisplayHelp
 ()
 {
   fprintf(stdout, "Usage : %s options\n", MainProgramName);
-  fprintf(stdout, "         -h, --help                    : Display this message\n");
-  fprintf(stdout, "         -f, --function function-name  : Specifiy the function name\n");
-  fprintf(stdout, "         -m, --module module-name      : Specifiy the module name (if any)\n");
-  fprintf(stdout, "         -H, --header header-name      : Specify the header name (if function is exported)\n");
-  fprintf(stdout, "         -o, --overwrite               : Specify to overwrite function file if it exists\n");
-  fprintf(stdout, "         -p, --parameters {type name}* : Specify the function parameters (must be last option)\n");
-  fprintf(stdout, "         -l, --local                   : Specify that the element is local\n");
-  fprintf(stdout, "         -g, --global                  : Specify that the element is global\n");
-  fprintf(stdout, "         -d, --data dataname           : Specify the data name\n");
-  fprintf(stdout, "         -t, --datatype datatype       : Specify the type of a new data item\n");
-  fprintf(stdout, "         -n, --newmodule modulename    : Specify a new module\n");
-  fprintf(stdout, "         -r, --returntype type         : Specify the return type of a function\n");
-  fprintf(stdout, "         -c, --createmoduledir         : Specify the creation of a module directory\n");
+  fprintf(stdout, "         -h, --help                     : Display this message\n");
+  fprintf(stdout, "         -f, --function function-name   : Specifiy the function name\n");
+  fprintf(stdout, "         -m, --module module-name       : Specifiy the module name (if any)\n");
+  fprintf(stdout, "         -H, --header header-name       : Specify the header name (if function is exported)\n");
+  fprintf(stdout, "         -o, --overwrite                : Specify to overwrite function file if it exists\n");
+  fprintf(stdout, "         -p, --parameters {type name}*  : Specify the function parameters (must be last option)\n");
+  fprintf(stdout, "         -P, --typelessparameters name* : Specify the function parameters (must be last option)\n");
+  fprintf(stdout, "         -l, --local                    : Specify that the element is local\n");
+  fprintf(stdout, "         -g, --global                   : Specify that the element is global\n");
+  fprintf(stdout, "         -d, --data dataname            : Specify the data name\n");
+  fprintf(stdout, "         -t, --datatype datatype        : Specify the type of a new data item\n");
+  fprintf(stdout, "         -n, --newmodule modulename     : Specify a new module\n");
+  fprintf(stdout, "         -r, --returntype type          : Specify the return type of a function\n");
+  fprintf(stdout, "         -c, --createmoduledir          : Specify the creation of a module directory\n");
+  fprintf(stdout, "         -j, --javascript               : Specify function is javascript function\n");
 }
 
 /*****************************************************************************!
@@ -949,6 +1013,44 @@ MainWriteFunctionFile
   fprintf(file, "}\n");
   fclose(file);
 }
+
+/*****************************************************************************!
+ * Function : MainWriteJavascriptFunctionFile
+ *****************************************************************************/
+void
+MainWriteJavascriptFunctionFile
+()
+{
+  Parameter*                            parameter;
+  FILE*                                 file;
+  string                                filename;
+ 
+  filename = StringCopy(MainFilename);
+
+  file = fopen(filename, "wb");
+  if ( NULL == file ) {
+    fprintf(stderr, "Could not open file %s : %s\n", filename, strerror(errno));
+    FreeMemory(filename);
+    exit(EXIT_FAILURE);
+  }
+  fprintf(file,  FunctionHeaderTemplate, MainFunctionName);
+  fprintf(file, "function\n");
+  fprintf(file, "%s\n", MainFunctionName);
+  fprintf(file, "(");
+  for ( parameter = MainParameters; parameter; parameter = parameter->next ) {
+    fprintf(file, "%s", parameter->name);
+    if ( parameter->next ) {
+      fprintf(file, ", ");
+    }
+  }
+  fprintf(file, ")\n");
+  fprintf(file, "{\n");
+  fprintf(file, "}\n");
+  fclose(file);
+  
+  FreeMemory(filename);
+}
+
 
 /*****************************************************************************!
  * Function : MainAddFunctionDeclaration
@@ -1196,7 +1298,7 @@ MainInsertFunctionInclude
   if ( MainModuleName && FileExists(MainModuleName) ) {
     filename = StringMultiConcat(MainModuleName, DirSeparator, MainFunctionName, MainSourceSuffix, NULL);
   } else {
-    filename = StringCopy(MainSourceName);
+    filename = StringMultiConcat(MainFunctionName, MainSourceSuffix, NULL);
   }
   s = StringMultiConcat("#include \"", filename, "\"\n", NULL);
   
