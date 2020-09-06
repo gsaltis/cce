@@ -30,6 +30,13 @@
 /*****************************************************************************!
  * Local Data
  *****************************************************************************/
+int
+StringListCompare
+(const void* p1, const void* p2);
+
+int
+StringListCompareReverse
+(const void* p1, const void* p2);
 
 /*****************************************************************************!
  * Local Functions
@@ -625,7 +632,7 @@ string
 StringFill
 (char InChar, int InSize)
 {
-  string                                returnString;
+  string				returnString;
 
   if (InChar == NUL || InSize == 0) {
     return NULL;
@@ -643,8 +650,8 @@ string
 StringListConcat
 (StringList* InList, string InSeparators)
 {
-  string                                returnString;
-  int                                   i;
+  string				returnString;
+  int					i;
 
   if ( InList == NULL ) {
     return NULL;
@@ -672,8 +679,8 @@ string
 StringMultiConcat
 (string InString1, ...)
 {
-  va_list                               args;
-  string                                returnString, s;
+  va_list				args;
+  string				returnString, s;
 
   if ( NULL == InString1 ) {
     return NULL;
@@ -688,6 +695,92 @@ StringMultiConcat
   }
   return returnString;
 } 
+
+/*****************************************************************************!
+ * Function : StringListSort
+ *****************************************************************************/
+void
+StringListSort
+(StringList* InStrings)
+{
+  string*								strings;
+  int									size;
+  int									i;
+
+  // If we have and empty list or a list with one item, just return
+  if ( NULL == InStrings || 2 > InStrings->stringCount ) {
+	return;
+  }
+
+  size = InStrings->stringCount;
+
+  // Convert the list to a flat array for qsort
+  strings = (string*)GetMemory(sizeof(string) * size);
+  for ( i = 0 ; i < size ; i++ ) {
+	strings[i] = InStrings->strings[i];
+  }
+
+  qsort(strings, size, sizeof(string), StringListCompare);
+
+  for ( i = 0; i < size; i++ ) {
+	InStrings->strings[i] = strings[i];
+  }
+
+  FreeMemory(strings);
+}
+
+/*****************************************************************************!
+ * Function : StringListReverseSort
+ *****************************************************************************/
+void
+StringListReverseSort
+(StringList* InStrings)
+{
+  string*								strings;
+  int									size;
+  int									i;
+
+  // If we have and empty list or a list with one item, just return
+  if ( NULL == InStrings || 2 > InStrings->stringCount ) {
+	return;
+  }
+
+  size = InStrings->stringCount;
+
+  // Convert the list to a flat array for qsort
+  strings = (string*)GetMemory(sizeof(string) * size);
+  for ( i = 0 ; i < size ; i++ ) {
+	strings[i] = InStrings->strings[i];
+  }
+
+  qsort(strings, size, sizeof(string), StringListCompareReverse);
+
+  for ( i = 0; i < size; i++ ) {
+	InStrings->strings[i] = strings[i];
+  }
+
+  FreeMemory(strings);
+}
+
+/*****************************************************************************!
+ * Function : StringListCompare
+ *****************************************************************************/
+int
+StringListCompare
+(const void* p1, const void* p2)
+{
+  return strcmp(* (char * const *) p1, * (char * const *) p2);
+}
+
+/*****************************************************************************!
+ * Function : StringListCompareReverse
+ *****************************************************************************/
+int
+StringListCompareReverse
+(const void* p1, const void* p2)
+{
+  return strcmp(* (char * const *) p2, * (char * const *) p1);
+}
 
 /*****************************************************************************!
  * Function : StringToLowerCase
