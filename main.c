@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <time.h>
+#include <unistd.h>
 
 /*****************************************************************************!
  * Local Headers
@@ -79,6 +80,9 @@ MainCopyrightHolderName = NULL;
 
 static bool
 MainOverwriteFunctionFile;
+
+static bool
+MainCreateModuleDirectory = false;
 
 static string
 MainProgramName = "cce";
@@ -145,9 +149,6 @@ MainDataType = NULL;
 string
 MainNewModuleName = NULL;
 
-bool
-MainCreateModuleDirectory = false;
- 
 /*****************************************************************************!
  * Local Functions
  *****************************************************************************/
@@ -737,6 +738,11 @@ ProcessCommandLine
       continue;
     }
 
+	if ( StringEqualsOneOf(command, "-nd", "--newmoduledirectory", NULL) ) {
+	  MainCreateModuleDirectory = true;
+	  continue;
+	}
+
     //! Specify the module
     if ( StringEqualsOneOf(command, "-m", "--module", NULL) ) {
       i++;
@@ -868,7 +874,21 @@ VerifyCommandLine
     MainSourceName = StringConcat(MainModuleName, MainSourceSuffix);
   }  
 
+  // Check to see if we have to create a new module directory
   if ( MainNewModuleName ) {
+	printf("%s %d\n", __FILE__, __LINE__);
+	if ( MainCreateModuleDirectory ) {
+	  printf("%s %d\n", __FILE__, __LINE__);
+	  if ( FileExists(MainNewModuleName) ) {
+		if ( ! MainOverwriteFunctionFile ) {
+		  fprintf(stderr, "Module directory %s exists\n", MainNewModuleName);
+		  exit(EXIT_FAILURE);
+		}
+	  }
+	  printf("%s %d\n", __FILE__, __LINE__);
+	  mkdir(MainNewModuleName);
+	}
+
     MainHeaderName = StringConcat(MainNewModuleName, MainHeaderSuffix);
     MainSourceName = StringConcat(MainNewModuleName, MainSourceSuffix);
 	if ( FileExists(MainSourceName) && !MainOverwriteFunctionFile ) {
@@ -966,6 +986,7 @@ MainDisplayHelp
   fprintf(stdout, "         -h, --help                     : Display this message\n");
   fprintf(stdout, "         -f, --function function-name   : Specifiy the function name\n");
   fprintf(stdout, "         -m, --module module-name       : Specifiy the module name (if any)\n");
+  fprintf(stdout, "         -nd, --newmoduledirectory      : Specifiy a new module directory is to be created\n");
   fprintf(stdout, "         -H, --header header-name       : Specify the header name (if function is exported)\n");
   fprintf(stdout, "         -o, --overwrite                : Specify to overwrite function file if it exists\n");
   fprintf(stdout, "         -p, --parameters {type name}*  : Specify the function parameters (must be last option)\n");
