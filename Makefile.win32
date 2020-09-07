@@ -1,15 +1,15 @@
 CC			= gcc
 LINK			= gcc
-INSTALL			= install
+INSTALL			= copy
 
 CC_FLAGS		= -g -Wall -c
 LINK_FLAGS		= -g
-INSTALL_FLAGS		= -s
+INSTALL_FLAGS		= 
 
 EX_EXTENSION		= .exe
 
 TARGET			= cce$(EX_EXTENSION)
-BINDIR			= /usr/local/bin
+BINDIR			= d:\usr\local\bin
 
 OBJS			= $(sort main.o String.o MemoryManager.o FileUtils.o)
 
