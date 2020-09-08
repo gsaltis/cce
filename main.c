@@ -18,6 +18,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 /*****************************************************************************!
  * Local Headers
@@ -72,6 +75,9 @@ typedef enum _FunctionType FunctionType;
  *****************************************************************************/
 static FunctionType
 MainFunctionType = FunctionTypeC;
+
+static bool
+MainAddStructElements = false;
 
 static string
 MainProjectName = NULL;
@@ -262,6 +268,10 @@ void
 MainAddNewStructure
 ();
 
+void
+MainAddNewStructElements
+();
+
 /*****************************************************************************!
  * Function : main
  *****************************************************************************/
@@ -278,10 +288,114 @@ main
     MainAddDataItem();
   } else if ( MainNewModuleName ) {
 	MainAddNewModuleItem();
+  } else if ( MainAddStructElements ) {
+	MainAddNewStructElements();
   } else if ( MainStructName ) {
 	MainAddNewStructure();
   }
   return EXIT_SUCCESS;
+}
+
+/*****************************************************************************!
+ * Function : MainAddNewStructElements
+ * Purpose  : Add new elements to an existing structure
+ *****************************************************************************/
+void
+MainAddNewStructElements
+()
+{
+  string								filename;
+  char*									buffer;
+  int									bufferLength;
+  char**								lines;
+  int									linesCount;
+  FILE*									file;
+  int									i;
+
+  if ( MainModuleName == NULL ) {
+ 	fprintf(stderr, "No module name specified\n");
+	return;
+  }
+  if ( MainStructName == NULL ) {
+	fprintf(stderr, "No structure name specified\n");
+    return;
+  }
+  if ( MainParameters == NULL ) {
+	fprintf(stderr, "No structure elements specified\n");
+    return;
+  }
+
+  //! Build the structure file name
+  if ( FileExists(MainModuleName) ) {
+	filename = StringMultiConcat(MainModuleName, "/", MainStructName, MainHeaderSuffix, NULL);
+  } else {
+   	filename = StringMultiConcat(MainStructName, MainHeaderSuffix);
+  }
+
+  //! Open the file and get the lines
+  if ( !GetFileBuffer(filename, &buffer, &bufferLength) ) {
+	fprintf(stderr, "Could not read contents of %s\n", filename);
+	FreeMemory(filename);
+	return;
+  }
+  GetFileLines(buffer, bufferLength, &lines, &linesCount);
+
+  //! Open the header file for output
+  if ( 0 != unlink(filename) ) {
+	fprintf(stderr, "Could not unlink %s : %s\n", filename, strerror(errno));
+	return;
+  }
+
+  //! Backup the file before we start changing it
+  CreateFileBackupCopy(filename);
+
+  file = fopen(filename, "wb");
+  if ( NULL == file ) {
+    fprintf(stderr, "Could not open %s for output : %s\n", filename, strerror(errno));
+    return;
+  }
+
+  //! Loop over the lines and write out the ones before the insert point
+  //  (the open brace of the struct - should be first character in line
+  for (i = 0; i < linesCount; i++) {
+	fprintf(file, "%s\n", lines[i]);
+	if ( StringEqual("{", lines[i]) ) {
+	  i++;
+	  break;
+    }
+  }
+
+  if ( i == linesCount ) {
+	fprintf(stderr, "Could not find the begining of the structure %s\n", MainStructName);
+	return;
+  }
+	
+  //! Insert the elements
+  for ( Parameter* parameter = MainParameters; parameter; parameter = parameter->next ) {
+  	int									k;
+	k = fprintf(file, "  %s", parameter->type);
+	k = 40 - k;
+	if ( k < 1 ) {
+	  k = 1;
+    }
+    fprintf(file, "%*s%s;\n", k, " ", parameter->name);
+  }
+
+  //! Write out the remainder of the structure
+  for ( ; i < linesCount; i++) {
+	fprintf(file, "%s\n", lines[i]);
+  }
+
+  //! Close the file
+  fclose(file);
+
+  //! Free any memory we got
+  for ( i = 0 ; i < linesCount; i++ ) {
+	FreeMemory(lines[i]);
+  }
+  FreeMemory(buffer);
+  FreeMemory(lines);
+  FreeMemory(filename);
 }
 
 /*****************************************************************************!
@@ -298,7 +412,7 @@ MainAddNewStructure
   char*									buffer;
   int									bufferLength;
   int									linesCount;
-  int									i;
+  int									i, k;
   string								filename2;
 
   s = StringConcat(MainStructName, MainHeaderSuffix);
@@ -329,6 +443,16 @@ MainAddNewStructure
   fprintf(file, "#define _%s_\n", fenceDefine);
   fprintf(file, "struct _%s\n", MainStructName);
   fprintf(file, "{\n");
+  if ( MainParameters ) {
+    for ( Parameter* parameter = MainParameters; parameter; parameter = parameter->next ) {
+	  k = fprintf(file, "  %s", parameter->type);
+	  k = 40 - k;
+  	  if ( k <= 0 ) {
+		k = 1;
+	  }
+	  fprintf(file, "%*s%s;\n", k, " ", parameter->name);
+ 	}
+  }
   fprintf(file, "};\n");
   fprintf(file, "typedef struct _%s %s;\n", MainStructName, MainStructName);
   fprintf(file, "#endif // _%s_\n", fenceDefine);
@@ -342,9 +466,7 @@ MainAddNewStructure
   file = fopen(filename2, "wb");
   for (i = 0; i < linesCount; i++) {
 	fprintf(file, "%s\n", lines[i]);
-	printf("%s\n", lines[i]);
 	if ( StringEqual(" * Local Headers", lines[i]) ) {
-	  printf("%s %d\n", __FILE__, __LINE__);
 	  FreeMemory(lines[i]);
 	  i++;
 	  fprintf(file, "%s\n", lines[i]);
@@ -694,6 +816,11 @@ ProcessCommandLine
   for ( i = 1; i < argc; i++ ) {
     command = argv[i];
 
+    if ( StringEqualsOneOf(command, "-se", "--structelements", NULL) ) {
+	  MainAddStructElements = true;
+	  continue;
+	}
+
 	if ( StringEqualsOneOf(command, "-s", "--struct", NULL) ) {
 	  i++;
 	  if ( i == argc ) {
@@ -961,14 +1088,13 @@ VerifyCommandLine
 {
   //! Must specifiy either funcdtion nammd or data name
   if ( MainFunctionName == NULL && MainDataName == NULL && MainNewModuleName == NULL && MainStructName == NULL ) {
-    fprintf(stderr, "%sEither a function name, new module name or data name must be specified%s\n",
+    fprintf(stderr, "%sEither a structure name, function name, new module name or data name must be specified%s\n",
             ColorBrightRed, ColorReset);
     MainDisplayHelp();
     exit(EXIT_FAILURE);
   }
 
   //! But can't specify both
-  
   if ( (MainStructName ? 1 : 0) + ((MainFunctionName ? 1 : 0) + (MainDataName ? 1 : 0) + (MainNewModuleName ? 1 : 0)) != 1) {
     fprintf(stderr, "%sOnly a structure name, function name, new module name or data name can be specified at one time%s\n",
             ColorBrightRed, ColorReset);
@@ -996,7 +1122,7 @@ VerifyCommandLine
 		  exit(EXIT_FAILURE);
 		}
 	  }
-	  mkdir(MainNewModuleName);
+	  mkdir(MainNewModuleName, 0755);
 	}
 
     MainHeaderName = StringConcat(MainNewModuleName, MainHeaderSuffix);
@@ -1093,23 +1219,24 @@ MainDisplayHelp
 ()
 {
   fprintf(stdout, "Usage : %s options\n", MainProgramName);
-  fprintf(stdout, "         -c, --createmoduledir          : Specify the creation of a module directory\n");
-  fprintf(stdout, "         -d, --data dataname            : Specify the data name\n");
-  fprintf(stdout, "         -f, --function function-name   : Specifiy the function name\n");
-  fprintf(stdout, "         -g, --global                   : Specify that the element is global\n");
-  fprintf(stdout, "         -h, --help                     : Display this message\n");
-  fprintf(stdout, "         -H, --header header-name       : Specify the header name (if function is exported)\n");
-  fprintf(stdout, "         -j, --javascript               : Specify function is javascript function\n");
-  fprintf(stdout, "         -l, --local                    : Specify that the element is local\n");
-  fprintf(stdout, "         -m, --module module-name       : Specifiy the module name (if any)\n");
-  fprintf(stdout, "         -n, --newmodule modulename     : Specify a new module\n");
-  fprintf(stdout, "         -nd, --newmoduledirectory      : Specifiy a new module directory is to be created\n");
-  fprintf(stdout, "         -o, --overwrite                : Specify to overwrite function file if it exists\n");
-  fprintf(stdout, "         -p, --parameters {type name}*  : Specify the function parameters (must be last option)\n");
-  fprintf(stdout, "         -P, --typelessparameters name* : Specify the function parameters (must be last option)\n");
-  fprintf(stdout, "         -r, --returntype type          : Specify the return type of a function\n");
-  fprintf(stdout, "         -s, --struct name              : Specify a new structure type\n");
-  fprintf(stdout, "         -t, --datatype datatype        : Specify the type of a new data item\n");
+  fprintf(stdout, "         -c,  --createmoduledir          : Specify the creation of a module directory\n");
+  fprintf(stdout, "         -d,  --data dataname            : Specify the data name\n");
+  fprintf(stdout, "         -f,  --function function-name   : Specifiy the function name\n");
+  fprintf(stdout, "         -g,  --global                   : Specify that the element is global\n");
+  fprintf(stdout, "         -h,  --help                     : Display this message\n");
+  fprintf(stdout, "         -H,  --header header-name       : Specify the header name (if function is exported)\n");
+  fprintf(stdout, "         -j,  --javascript               : Specify function is javascript function\n");
+  fprintf(stdout, "         -l,  --local                    : Specify that the element is local\n");
+  fprintf(stdout, "         -m,  --module module-name       : Specifiy the module name (if any)\n");
+  fprintf(stdout, "         -n,  --newmodule modulename     : Specify a new module\n");
+  fprintf(stdout, "         -nd, --newmoduledirectory       : Specifiy a new module directory is to be created\n");
+  fprintf(stdout, "         -o,  --overwrite                : Specify to overwrite function file if it exists\n");
+  fprintf(stdout, "         -p,  --parameters {type name}*  : Specify the function parameters (must be last option)\n");
+  fprintf(stdout, "         -P,  --typelessparameters name* : Specify the function parameters (must be last option)\n");
+  fprintf(stdout, "         -r,  --returntype type          : Specify the return type of a function\n");
+  fprintf(stdout, "         -s,  --struct name              : Specify a new structure type\n");
+  fprintf(stdout, "         -se, --struct name              : Specify a new structure type\n");
+  fprintf(stdout, "         -t,  --datatype datatype        : Specify the type of a new data item\n");
 }
 
 /*****************************************************************************!

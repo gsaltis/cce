@@ -1,0 +1,2 @@
+alias m="make -f Makefile.linux"
+export PS1="cce : "
