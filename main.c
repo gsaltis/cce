@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include <time.h>
 #include <unistd.h>
+#include <errno.h>
 
 /*****************************************************************************!
  * Local Headers
@@ -130,13 +131,22 @@ static string
 MainGlobalHeaders[] = {
   "stdio.h", "stdlib.h", "string.h", "stdbool.h", "stdint.h"
 };
- 
+
+static string
+MainStructName = NULL;
+
 static string
 FunctionHeaderTemplate =
   "/*****************************************************************************!\n"
   " * Function : %s\n"
   " *****************************************************************************/\n";
- 
+
+static string
+StructHeaderTemplate = 
+  "/*****************************************************************************!\n"
+  " * Exported Type : %s\n"
+  " *****************************************************************************/\n";
+
 ElementScope
 MainElementScope = ElementScopeGlobal;
 
@@ -248,6 +258,10 @@ void
 MainAddNewModuleItem
 ();
 
+void
+MainAddNewStructure
+();
+
 /*****************************************************************************!
  * Function : main
  *****************************************************************************/
@@ -264,8 +278,87 @@ main
     MainAddDataItem();
   } else if ( MainNewModuleName ) {
 	MainAddNewModuleItem();
+  } else if ( MainStructName ) {
+	MainAddNewStructure();
   }
   return EXIT_SUCCESS;
+}
+
+/*****************************************************************************!
+ * Function : MainAddNewStructure
+ *****************************************************************************/
+void
+MainAddNewStructure
+()
+{
+  string								filename;
+  FILE*									file;
+  string								fenceDefine, s;
+  char**								lines;
+  char*									buffer;
+  int									bufferLength;
+  int									linesCount;
+  int									i;
+  string								filename2;
+
+  s = StringConcat(MainStructName, MainHeaderSuffix);
+  fenceDefine = StringToLowerCase(s);
+  FreeMemory(s);
+
+  for (s = fenceDefine ; *s; s++ ) {
+	if ( !StringContainsChar("abcdefghijklmnopqrstuvwxyz0123456789_", *s) ) {
+	  *s = '_';
+	}
+  }
+  if ( FileExists(MainModuleName) ) {
+	filename = StringMultiConcat(MainModuleName, "/", MainStructName, MainHeaderSuffix, NULL);
+  } else {
+	filename = StringMultiConcat(MainStructName, MainHeaderSuffix, NULL);
+  }
+
+  if ( FileExists(filename) && !MainOverwriteFunctionFile ) {
+	fprintf(stderr, "%s exists cannot overwrite\n", filename);
+  }
+  file = fopen(filename, "wb");
+  if ( NULL == file ) {
+	fprintf(stderr, "Could not open %s : %s\n", filename, strerror(errno));
+  }
+
+  fprintf(file, StructHeaderTemplate, MainStructName);
+  fprintf(file, "#ifndef _%s_\n", fenceDefine);
+  fprintf(file, "#define _%s_\n", fenceDefine);
+  fprintf(file, "struct _%s\n", MainStructName);
+  fprintf(file, "{\n");
+  fprintf(file, "};\n");
+  fprintf(file, "typedef struct _%s %s;\n", MainStructName, MainStructName);
+  fprintf(file, "#endif // _%s_\n", fenceDefine);
+  fclose(file);
+  FreeMemory(fenceDefine);
+
+  filename2 = StringConcat(MainModuleName, MainHeaderSuffix);
+  GetFileBuffer(filename2, &buffer, &bufferLength);
+  GetFileLines(buffer, bufferLength, &lines, &linesCount);
+  unlink(filename2);
+  file = fopen(filename2, "wb");
+  for (i = 0; i < linesCount; i++) {
+	fprintf(file, "%s\n", lines[i]);
+	printf("%s\n", lines[i]);
+	if ( StringEqual(" * Local Headers", lines[i]) ) {
+	  printf("%s %d\n", __FILE__, __LINE__);
+	  FreeMemory(lines[i]);
+	  i++;
+	  fprintf(file, "%s\n", lines[i]);
+ 	  fprintf(file, "#include \"%s\"\n", filename);  
+	}
+
+	FreeMemory(lines[i]);
+  }
+  FreeMemory(lines);
+  FreeMemory(buffer);
+  FreeMemory(filename2);
+  FreeMemory(filename);
+  fclose(file);
+		   
 }
 
 /*****************************************************************************!
@@ -600,6 +693,21 @@ ProcessCommandLine
   
   for ( i = 1; i < argc; i++ ) {
     command = argv[i];
+
+	if ( StringEqualsOneOf(command, "-s", "--struct", NULL) ) {
+	  i++;
+	  if ( i == argc ) {
+		fprintf(stderr, "%s requires a structure name\n", command);
+		MainDisplayHelp();
+		exit(EXIT_FAILURE);
+	  }
+	  if ( MainStructName ) {
+		FreeMemory(MainStructName);
+	  }
+	  MainStructName = StringCopy(argv[i]);
+	  continue;
+	}
+
     if ( StringEqualsOneOf(command, "-h", "--help", NULL) ) {
       MainDisplayHelp();
       exit(EXIT_SUCCESS);
@@ -852,7 +960,7 @@ VerifyCommandLine
 ()
 {
   //! Must specifiy either funcdtion nammd or data name
-  if ( MainFunctionName == NULL && MainDataName == NULL && MainNewModuleName == NULL ) {
+  if ( MainFunctionName == NULL && MainDataName == NULL && MainNewModuleName == NULL && MainStructName == NULL ) {
     fprintf(stderr, "%sEither a function name, new module name or data name must be specified%s\n",
             ColorBrightRed, ColorReset);
     MainDisplayHelp();
@@ -861,11 +969,16 @@ VerifyCommandLine
 
   //! But can't specify both
   
-  if ( ((MainFunctionName ? 1 : 0) + (MainDataName ? 1 : 0) + (MainNewModuleName ? 1 : 0)) != 1) {
-    fprintf(stderr, "%sOnly a function name, new module name or data name can be specified at one time%s\n",
+  if ( (MainStructName ? 1 : 0) + ((MainFunctionName ? 1 : 0) + (MainDataName ? 1 : 0) + (MainNewModuleName ? 1 : 0)) != 1) {
+    fprintf(stderr, "%sOnly a structure name, function name, new module name or data name can be specified at one time%s\n",
             ColorBrightRed, ColorReset);
     MainDisplayHelp();
     exit(EXIT_FAILURE);
+  }
+
+  if ( MainStructName && MainModuleName == NULL ) {
+	fprintf(stderr, "A new structre requires a module\n");
+	exit(EXIT_FAILURE);
   }
 
   //! The Module name is the base name of the header and source file name
@@ -876,16 +989,13 @@ VerifyCommandLine
 
   // Check to see if we have to create a new module directory
   if ( MainNewModuleName ) {
-	printf("%s %d\n", __FILE__, __LINE__);
 	if ( MainCreateModuleDirectory ) {
-	  printf("%s %d\n", __FILE__, __LINE__);
 	  if ( FileExists(MainNewModuleName) ) {
 		if ( ! MainOverwriteFunctionFile ) {
 		  fprintf(stderr, "Module directory %s exists\n", MainNewModuleName);
 		  exit(EXIT_FAILURE);
 		}
 	  }
-	  printf("%s %d\n", __FILE__, __LINE__);
 	  mkdir(MainNewModuleName);
 	}
 
@@ -983,22 +1093,23 @@ MainDisplayHelp
 ()
 {
   fprintf(stdout, "Usage : %s options\n", MainProgramName);
-  fprintf(stdout, "         -h, --help                     : Display this message\n");
+  fprintf(stdout, "         -c, --createmoduledir          : Specify the creation of a module directory\n");
+  fprintf(stdout, "         -d, --data dataname            : Specify the data name\n");
   fprintf(stdout, "         -f, --function function-name   : Specifiy the function name\n");
-  fprintf(stdout, "         -m, --module module-name       : Specifiy the module name (if any)\n");
-  fprintf(stdout, "         -nd, --newmoduledirectory      : Specifiy a new module directory is to be created\n");
+  fprintf(stdout, "         -g, --global                   : Specify that the element is global\n");
+  fprintf(stdout, "         -h, --help                     : Display this message\n");
   fprintf(stdout, "         -H, --header header-name       : Specify the header name (if function is exported)\n");
+  fprintf(stdout, "         -j, --javascript               : Specify function is javascript function\n");
+  fprintf(stdout, "         -l, --local                    : Specify that the element is local\n");
+  fprintf(stdout, "         -m, --module module-name       : Specifiy the module name (if any)\n");
+  fprintf(stdout, "         -n, --newmodule modulename     : Specify a new module\n");
+  fprintf(stdout, "         -nd, --newmoduledirectory      : Specifiy a new module directory is to be created\n");
   fprintf(stdout, "         -o, --overwrite                : Specify to overwrite function file if it exists\n");
   fprintf(stdout, "         -p, --parameters {type name}*  : Specify the function parameters (must be last option)\n");
   fprintf(stdout, "         -P, --typelessparameters name* : Specify the function parameters (must be last option)\n");
-  fprintf(stdout, "         -l, --local                    : Specify that the element is local\n");
-  fprintf(stdout, "         -g, --global                   : Specify that the element is global\n");
-  fprintf(stdout, "         -d, --data dataname            : Specify the data name\n");
-  fprintf(stdout, "         -t, --datatype datatype        : Specify the type of a new data item\n");
-  fprintf(stdout, "         -n, --newmodule modulename     : Specify a new module\n");
   fprintf(stdout, "         -r, --returntype type          : Specify the return type of a function\n");
-  fprintf(stdout, "         -c, --createmoduledir          : Specify the creation of a module directory\n");
-  fprintf(stdout, "         -j, --javascript               : Specify function is javascript function\n");
+  fprintf(stdout, "         -s, --struct name              : Specify a new structure type\n");
+  fprintf(stdout, "         -t, --datatype datatype        : Specify the type of a new data item\n");
 }
 
 /*****************************************************************************!
