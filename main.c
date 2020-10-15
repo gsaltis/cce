@@ -73,6 +73,9 @@ typedef enum _FunctionType FunctionType;
 /*****************************************************************************!
  * Local Data
  *****************************************************************************/
+static string
+MainInitializeDataValue = NULL;
+
 static FunctionType
 MainFunctionType = FunctionTypeC;
 
@@ -164,6 +167,9 @@ MainDataType = NULL;
 
 string
 MainNewModuleName = NULL;
+
+string
+MainVersion = "1.1.0";
 
 /*****************************************************************************!
  * Local Functions
@@ -689,7 +695,11 @@ InsertDataDefinition
   } else {
     newLines[i++] = StringCopy(MainDataType);
   }
-  newLines[i++] = StringConcat(MainDataName, ";");
+  if ( !InIsExtern && MainInitializeDataValue ) {
+	newLines[i++] = StringMultiConcat(MainDataName, " = ", MainInitializeDataValue, ";", NULL);
+  } else {
+    newLines[i++] = StringConcat(MainDataName, ";");
+  }
   if ( needNewLine ) {
     newLines[i++] = StringCopy("");
   }
@@ -839,6 +849,27 @@ ProcessCommandLine
       MainDisplayHelp();
       exit(EXIT_SUCCESS);
     }
+
+	// 
+	if ( StringEqualsOneOf(command, "-i", "--init", NULL) ) {
+	  i++;
+	  if ( i == argc ) {
+		fprintf(stderr, "%s%s is missing an initial value%s\n", ColorBrightRed, command, ColorReset);
+		MainDisplayHelp();
+		exit(EXIT_FAILURE);
+	  }
+      if ( MainInitializeDataValue ) {
+		FreeMemory(MainInitializeDataValue);
+	  }
+	  MainInitializeDataValue = StringCopy(argv[i]);
+      continue;
+	}
+
+	// 
+	if ( StringEqualsOneOf(command, "-v", "--version", NULL) ) {
+	  fprintf(stdout, "%s : Version %s\n", MainProgramName, MainVersion);
+	  exit(EXIT_SUCCESS);
+	}
 
     //
     if ( StringEqualsOneOf(command, "-f", "--function", NULL) ) {
@@ -1225,6 +1256,7 @@ MainDisplayHelp
   fprintf(stdout, "         -g,  --global                   : Specify that the element is global\n");
   fprintf(stdout, "         -h,  --help                     : Display this message\n");
   fprintf(stdout, "         -H,  --header header-name       : Specify the header name (if function is exported)\n");
+  fprintf(stdout, "         -i,  --init value               : Specify the initial value of a data value\n");
   fprintf(stdout, "         -j,  --javascript               : Specify function is javascript function\n");
   fprintf(stdout, "         -l,  --local                    : Specify that the element is local\n");
   fprintf(stdout, "         -m,  --module module-name       : Specifiy the module name (if any)\n");
@@ -1237,6 +1269,7 @@ MainDisplayHelp
   fprintf(stdout, "         -s,  --struct name              : Specify a new structure type\n");
   fprintf(stdout, "         -se, --struct name              : Specify a new structure type\n");
   fprintf(stdout, "         -t,  --datatype datatype        : Specify the type of a new data item\n");
+  fprintf(stdout, "         -v,  --version                  : Display the version number\n");
 }
 
 /*****************************************************************************!
