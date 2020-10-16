@@ -826,7 +826,7 @@ ProcessCommandLine
   for ( i = 1; i < argc; i++ ) {
     command = argv[i];
 
-    if ( StringEqualsOneOf(command, "-se", "--structelements", NULL) ) {
+    if ( StringEqualsOneOf(command, "-se", "--structelement", NULL) ) {
 	  MainAddStructElements = true;
 	  continue;
 	}
@@ -1267,7 +1267,8 @@ MainDisplayHelp
   fprintf(stdout, "         -P,  --typelessparameters name* : Specify the function parameters (must be last option)\n");
   fprintf(stdout, "         -r,  --returntype type          : Specify the return type of a function\n");
   fprintf(stdout, "         -s,  --struct name              : Specify a new structure type\n");
-  fprintf(stdout, "         -se, --struct name              : Specify a new structure type\n");
+  fprintf(stdout, "         -se, --structelement name       : Specify a new structure element\n");
+  fprintf(stdout, "                                           (requires module name, struct name and -p elements\n");
   fprintf(stdout, "         -t,  --datatype datatype        : Specify the type of a new data item\n");
   fprintf(stdout, "         -v,  --version                  : Display the version number\n");
 }
