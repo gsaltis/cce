@@ -171,6 +171,18 @@ MainNewModuleName = NULL;
 string
 MainVersion = "1.1.0";
 
+bool
+MainAddGlobalHeaders = false;
+
+bool
+MainAddLocalHeaders = false;
+
+string
+MainGlobalHeaderName = NULL;
+
+string
+MainLocalHeaderName = NULL;
+
 /*****************************************************************************!
  * Local Functions
  *****************************************************************************/
@@ -278,6 +290,14 @@ void
 MainAddNewStructElements
 ();
 
+void
+MainHandleAddGlobalHeader
+();
+
+void
+MainHandleAddLocalHeader
+();
+
 /*****************************************************************************!
  * Function : main
  *****************************************************************************/
@@ -288,7 +308,11 @@ main
   MainInitialize();
   ProcessCommandLine(argc, argv);
   VerifyCommandLine();
-  if ( MainFunctionName ) {
+  if ( MainAddGlobalHeaders ) {
+	MainHandleAddGlobalHeader();
+  } else if ( MainAddLocalHeaders ) {
+	MainHandleAddLocalHeader();
+  } else if ( MainFunctionName ) {
     MainAddFunctionItem();
   } else if ( MainDataName ) {
     MainAddDataItem();
@@ -300,6 +324,206 @@ main
 	MainAddNewStructure();
   }
   return EXIT_SUCCESS;
+}
+
+/*****************************************************************************!
+ * Function : MainHandleAddGlobalHeader
+ *****************************************************************************/
+void
+MainHandleAddGlobalHeader
+()
+{
+  string								filename;
+  string								headername;
+  char*									buffer;
+  char**								lines;
+  int									bufferSize;
+  int									linesCount;
+  FILE*									file;
+  int									i;
+  bool									needExtraLine;
+
+  if ( MainElementScope == ElementScopeGlobal ) {
+	filename = StringMultiConcat(MainModuleName, MainHeaderSuffix, NULL);
+  } else {
+	filename = StringMultiConcat(MainModuleName, MainSourceSuffix, NULL);
+  }
+  
+  headername = StringMultiConcat("<", MainGlobalHeaderName,  ">", NULL);
+
+  if ( !GetFileBuffer(filename, &buffer, &bufferSize) ) {
+	fprintf(stderr, "Could not read contents of %s\n", filename);
+	FreeMemory(filename);
+	FreeMemory(headername);
+  }
+
+  CreateFileBackupCopy(filename);
+  if ( unlink(filename) != 0 ) {
+	fprintf(stderr, "Could not remove %s\n", filename);
+	FreeMemory(filename);
+	FreeMemory(headername);
+	FreeMemory(buffer);
+  }
+  GetFileLines(buffer, bufferSize, &lines, &linesCount);
+  file = fopen(filename, "wb");
+  if ( NULL == file  ) {
+    fprintf(stderr, "Could not open %s for output : %s\n", filename, strerror(errno));
+	FreeMemory(filename);
+	FreeMemory(headername);
+	FreeMemory(buffer);
+	for (i = 0; i < linesCount; i++ ) {
+	  FreeMemory(lines[i]);
+	}
+	FreeMemory(lines);
+	exit(EXIT_FAILURE);
+  }
+  for ( i = 0 ; i < linesCount; i++ ) {
+	fprintf(file, "%s\n", lines[i]);
+	if ( StringEqual(lines[i], " * Global Headers") ) {
+	  break;
+	}
+  }
+
+  if ( i == linesCount ) {
+	fprintf(stderr, "No Global Headers section found in f%s\n", filename);
+	FreeMemory(filename);
+	FreeMemory(headername);
+	FreeMemory(buffer);
+	for (i = 0; i < linesCount; i++ ) {
+	  FreeMemory(lines[i]);
+	}
+	FreeMemory(lines);
+	return;
+  }
+  i++;
+  needExtraLine = false;
+  fprintf(file, "%s\n", lines[i]);
+  for ( i++ ; i < linesCount; i++ ) {
+	if ( lines[i][0] == 0x00 ) {
+	  break;
+	}
+	if ( lines[i][0] == '/' ) {
+	  needExtraLine = true;
+	  break;
+	}
+	fprintf(file, "%s\n", lines[i]);
+  }
+  fprintf(file, "#include %s\n", headername);
+  if ( needExtraLine ) {
+	fprintf(file, "\n");
+  }
+  for ( ; i < linesCount; i++ ) {
+	fprintf(file, "%s\n", lines[i]);
+  }
+  fclose(file);
+
+  FreeMemory(filename);
+  FreeMemory(buffer);
+  FreeMemory(headername);
+  for ( i = 0 ; i < linesCount ; i++ ) {
+	FreeMemory(lines[i]);
+  }
+  FreeMemory(lines);
+}
+
+/*****************************************************************************!
+ * Function : MainHandleAddLocalHeader
+ *****************************************************************************/
+void
+MainHandleAddLocalHeader
+()
+{
+  string								filename;
+  string								headername;
+  char*									buffer;
+  char**								lines;
+  int									bufferSize;
+  int									linesCount;
+  FILE*									file;
+  int									i;
+  bool									needExtraLine;
+
+  if ( MainElementScope == ElementScopeGlobal ) {
+	filename = StringMultiConcat(MainModuleName, MainHeaderSuffix, NULL);
+  } else {
+	filename = StringMultiConcat(MainModuleName, MainSourceSuffix, NULL);
+  }
+  
+  headername = StringMultiConcat("\"", MainLocalHeaderName,  "\"", NULL);
+
+  if ( !GetFileBuffer(filename, &buffer, &bufferSize) ) {
+	fprintf(stderr, "Could not read contents of %s\n", filename);
+	FreeMemory(filename);
+	FreeMemory(headername);
+  }
+
+  CreateFileBackupCopy(filename);
+  if ( unlink(filename) != 0 ) {
+	fprintf(stderr, "Could not remove %s\n", filename);
+	FreeMemory(filename);
+	FreeMemory(headername);
+	FreeMemory(buffer);
+  }
+  GetFileLines(buffer, bufferSize, &lines, &linesCount);
+  file = fopen(filename, "wb");
+  if ( NULL == file  ) {
+    fprintf(stderr, "Could not open %s for output : %s\n", filename, strerror(errno));
+	FreeMemory(filename);
+	FreeMemory(headername);
+	FreeMemory(buffer);
+	for (i = 0; i < linesCount; i++ ) {
+	  FreeMemory(lines[i]);
+	}
+	FreeMemory(lines);
+	exit(EXIT_FAILURE);
+  }
+  for ( i = 0 ; i < linesCount; i++ ) {
+	fprintf(file, "%s\n", lines[i]);
+	if ( StringEqual(lines[i], " * Local Headers") ) {
+	  break;
+	}
+  }
+
+  if ( i == linesCount ) {
+	fprintf(stderr, "No Local Headers section found in f%s\n", filename);
+	FreeMemory(filename);
+	FreeMemory(headername);
+	FreeMemory(buffer);
+	for (i = 0; i < linesCount; i++ ) {
+	  FreeMemory(lines[i]);
+	}
+	FreeMemory(lines);
+	return;
+  }
+  i++;
+  needExtraLine = false;
+  fprintf(file, "%s\n", lines[i]);
+  for ( i++ ; i < linesCount; i++ ) {
+	if ( lines[i][0] == 0x00 ) {
+	  break;
+	}
+	if ( lines[i][0] == '/' ) {
+	  needExtraLine = true;
+	  break;
+	}
+	fprintf(file, "%s\n", lines[i]);
+  }
+  fprintf(file, "#include %s\n", headername);
+  if ( needExtraLine ) {
+	fprintf(file, "\n");
+  }
+  for ( ; i < linesCount; i++ ) {
+	fprintf(file, "%s\n", lines[i]);
+  }
+  fclose(file);
+
+  FreeMemory(filename);
+  FreeMemory(buffer);
+  FreeMemory(headername);
+  for ( i = 0 ; i < linesCount ; i++ ) {
+	FreeMemory(lines[i]);
+  }
+  FreeMemory(lines);
 }
 
 /*****************************************************************************!
@@ -1004,6 +1228,32 @@ ProcessCommandLine
       continue;
     }
 
+	if ( StringEqualsOneOf(command, "-L", "--addlocalheader", NULL) ) {
+	  MainAddLocalHeaders = true;
+	  i++;
+	  if ( i == argc ) {
+		fprintf(stderr, "%s is missing a header name\n", command);
+		MainDisplayHelp();
+		exit(EXIT_FAILURE);
+	  }
+	  MainLocalHeaderName = StringCopy(argv[i]);
+	  continue;
+	}
+
+
+
+	if ( StringEqualsOneOf(command, "-G", "--addglobalheader", NULL) ) {
+	  MainAddGlobalHeaders = true;
+	  i++;
+	  if ( i == argc ) {
+		fprintf(stderr, "%s is missing a header name\n", command);
+		MainDisplayHelp();
+		exit(EXIT_FAILURE);
+	  }
+	  MainGlobalHeaderName = StringCopy(argv[i]);
+	  continue;
+	}
+
 	if ( StringEqualsOneOf(command, "-nd", "--newmoduledirectory", NULL) ) {
 	  MainCreateModuleDirectory = true;
 	  continue;
@@ -1117,17 +1367,43 @@ void
 VerifyCommandLine
 ()
 {
+  if ( MainAddGlobalHeaders ) {
+	if ( MainGlobalHeaderName == NULL ) {
+	  fprintf(stderr, "Missing global header name\n");
+	  MainDisplayHelp();
+	  exit(EXIT_FAILURE);
+	}
+    if ( MainModuleName == NULL ) {
+	  fprintf(stderr, "Missing module name\n");
+	  MainDisplayHelp();
+	  exit(EXIT_FAILURE);
+	}
+  }
+
+  if ( MainAddLocalHeaders ) {
+	if ( MainLocalHeaderName == NULL ) {
+	  fprintf(stderr, "Missing local header name\n");
+	  MainDisplayHelp();
+	  exit(EXIT_FAILURE);
+	}
+    if ( MainModuleName == NULL ) {
+	  fprintf(stderr, "Missing module name\n");
+	  MainDisplayHelp();
+	  exit(EXIT_FAILURE);
+	}
+  }
+
   //! Must specifiy either funcdtion nammd or data name
-  if ( MainFunctionName == NULL && MainDataName == NULL && MainNewModuleName == NULL && MainStructName == NULL ) {
-    fprintf(stderr, "%sEither a structure name, function name, new module name or data name must be specified%s\n",
+  if ( !MainAddLocalHeaders && !MainAddGlobalHeaders && MainFunctionName == NULL && MainDataName == NULL && MainNewModuleName == NULL && MainStructName == NULL ) {
+    fprintf(stderr, "%sEither a global header, local header, structure name, function name, new module name or data name must be specified%s\n",
             ColorBrightRed, ColorReset);
     MainDisplayHelp();
     exit(EXIT_FAILURE);
   }
 
   //! But can't specify both
-  if ( (MainStructName ? 1 : 0) + ((MainFunctionName ? 1 : 0) + (MainDataName ? 1 : 0) + (MainNewModuleName ? 1 : 0)) != 1) {
-    fprintf(stderr, "%sOnly a structure name, function name, new module name or data name can be specified at one time%s\n",
+  if ( (MainAddLocalHeaders ? 1 : 1) + (MainAddGlobalHeaders ? 1 : 0) + (MainStructName ? 1 : 0) + ((MainFunctionName ? 1 : 0) + (MainDataName ? 1 : 0) + (MainNewModuleName ? 1 : 0)) != 1) {
+    fprintf(stderr, "%sOnly a local header, global header, structure name, function name, new module name or data name can be specified at one time%s\n",
             ColorBrightRed, ColorReset);
     MainDisplayHelp();
     exit(EXIT_FAILURE);
@@ -1252,13 +1528,17 @@ MainDisplayHelp
   fprintf(stdout, "Usage : %s options\n", MainProgramName);
   fprintf(stdout, "         -c,  --createmoduledir          : Specify the creation of a module directory\n");
   fprintf(stdout, "         -d,  --data dataname            : Specify the data name\n");
-  fprintf(stdout, "         -f,  --function function-name   : Specifiy the function name\n");
+  fprintf(stdout, "         -f,  --function function-name   : Specify the function name\n");
+  fprintf(stdout, "         -G,  --addglobalheader filename : Specify the global header name to be added\n");
+  fprintf(stdout, "                                           (requires module name)\n");
   fprintf(stdout, "         -g,  --global                   : Specify that the element is global\n");
   fprintf(stdout, "         -h,  --help                     : Display this message\n");
   fprintf(stdout, "         -H,  --header header-name       : Specify the header name (if function is exported)\n");
   fprintf(stdout, "         -i,  --init value               : Specify the initial value of a data value\n");
   fprintf(stdout, "         -j,  --javascript               : Specify function is javascript function\n");
   fprintf(stdout, "         -l,  --local                    : Specify that the element is local\n");
+  fprintf(stdout, "         -L,  --addlocalheader filename  : Specify the local header name to be added\n");
+  fprintf(stdout, "                                           (requires module name)\n");
   fprintf(stdout, "         -m,  --module module-name       : Specifiy the module name (if any)\n");
   fprintf(stdout, "         -n,  --newmodule modulename     : Specify a new module\n");
   fprintf(stdout, "         -nd, --newmoduledirectory       : Specifiy a new module directory is to be created\n");
