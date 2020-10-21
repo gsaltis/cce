@@ -1402,7 +1402,7 @@ VerifyCommandLine
   }
 
   //! But can't specify both
-  if ( (MainAddLocalHeaders ? 1 : 1) + (MainAddGlobalHeaders ? 1 : 0) + (MainStructName ? 1 : 0) + ((MainFunctionName ? 1 : 0) + (MainDataName ? 1 : 0) + (MainNewModuleName ? 1 : 0)) != 1) {
+  if ( (MainAddLocalHeaders ? 1 : 0) + (MainAddGlobalHeaders ? 1 : 0) + (MainStructName ? 1 : 0) + ((MainFunctionName ? 1 : 0) + (MainDataName ? 1 : 0) + (MainNewModuleName ? 1 : 0)) != 1) {
     fprintf(stderr, "%sOnly a local header, global header, structure name, function name, new module name or data name can be specified at one time%s\n",
             ColorBrightRed, ColorReset);
     MainDisplayHelp();
