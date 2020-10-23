@@ -73,6 +73,15 @@ typedef enum _FunctionType FunctionType;
 /*****************************************************************************!
  * Local Data
  *****************************************************************************/
+bool
+MainReplaceCodeLine = false;
+
+string
+MainCodeLine = NULL;
+
+int
+MainCodeLineNumber = 0;
+
 StringList*
 MainMakefileObjects = NULL;
 
@@ -314,6 +323,14 @@ void
 CreateMakefile
 ();
 
+void
+ReplaceCodeLine
+();
+
+string
+CreateFunctionFilename
+();
+
 /*****************************************************************************!
  * Function : main
  *****************************************************************************/
@@ -324,7 +341,9 @@ main
   MainInitialize();
   ProcessCommandLine(argc, argv);
   VerifyCommandLine();
-  if ( MainCreateMakefile ) {
+  if ( MainReplaceCodeLine ) {
+	ReplaceCodeLine();
+  } else if ( MainCreateMakefile ) {
 	CreateMakefile();
   } else if ( MainAddGlobalHeaders ) {
 	MainHandleAddGlobalHeader();
@@ -342,6 +361,60 @@ main
 	MainAddNewStructure();
   }
   return EXIT_SUCCESS;
+}
+
+/*****************************************************************************!
+ * Function : ReplaceCodeLine
+ *****************************************************************************/
+void
+ReplaceCodeLine
+()
+{
+  string                                filename;
+  char*									buffer;
+  int                                   bufferLen;
+  char**                                lines;
+  int                                   lineCount;
+  int									n, i;
+  FILE*									file;
+
+  filename = CreateFunctionFilename();
+  if ( NULL == filename ) {
+	fprintf(stderr, "Could not create function filename\n");
+	exit(EXIT_FAILURE);
+  }
+  if ( !FileExists(filename) ) {
+	fprintf(stderr, "%s does not exist\n", filename);
+	FreeMemory(filename);
+	exit(EXIT_FAILURE);
+  }
+  if ( !GetFileBuffer(filename, &buffer, &bufferLen) ) {
+	fprintf(stderr, "Could not read %s : %s\n", filename, strerror(errno));
+	FreeMemory(filename);
+	exit(EXIT_FAILURE);
+  }
+  GetFileLines(buffer, bufferLen, &lines, &lineCount);
+  FreeMemory(buffer);
+
+  if ( lineCount < MainCodeLineNumber ) {
+	fprintf(stderr, "%d line does not exists in %s\n", MainCodeLineNumber, filename);
+	exit(EXIT_FAILURE);
+  }
+
+  n = MainCodeLineNumber - 1;
+  CreateFileBackupCopy(filename);
+  FreeMemory(lines[n]);
+  lines[n] = StringCopy(MainCodeLine);
+  file = fopen(filename, "wb");
+  if ( NULL == file ) {
+	fprintf(stderr, "Could not open %s for writing : %s\n", filename, strerror(errno));
+	exit(EXIT_FAILURE);
+  }
+  for ( i = 0 ; i < lineCount; i++ ) {
+	fprintf(file, "%s\n", lines[i]);
+  }
+  fclose(file);
+  fprintf(stderr, "%s updated\n", filename);
 }
 
 /*****************************************************************************!
@@ -1078,6 +1151,32 @@ ProcessCommandLine
 	  continue;
 	}
 
+	if ( StringEqualsOneOf(command, "-C", "--codeline", NULL) ) {
+	  MainReplaceCodeLine = true;
+	  i++;
+	  if ( i == argc ) {
+		fprintf(stderr, "%s requires a line of code\n", command);
+		MainDisplayHelp();
+		exit(EXIT_FAILURE);
+	  }
+	  if ( MainCodeLine ) {
+		FreeMemory(MainCodeLine);
+	  }
+	  MainCodeLine = StringCopy(argv[i]);
+	  continue;
+	}
+
+	if ( StringEqualsOneOf(command, "-N", "--linenumber", NULL) ) {
+	  i++;
+	  if ( i == argc ) {
+		fprintf(stderr, "%s requires a line number\n", command);
+	    MainDisplayHelp();
+		exit(EXIT_FAILURE);
+	  }
+	  MainCodeLineNumber = atoi(argv[i]); 
+	  continue;
+	}
+
 	if ( StringEqualsOneOf(command, "-O", "--mainobjects", NULL) ) {
 	  i++;
 	  if ( i == argc ) {
@@ -1420,6 +1519,26 @@ void
 VerifyCommandLine
 ()
 {
+  if ( MainReplaceCodeLine ) {
+	if ( MainModuleName == NULL ) {
+	  fprintf(stderr, "Missing module name\n");
+	  MainDisplayHelp();
+	  exit(EXIT_FAILURE);
+	}
+
+	if ( MainCodeLine == NULL ) {
+	  fprintf(stderr, "Missing code line\n");
+	  MainDisplayHelp();
+	  exit(EXIT_FAILURE);
+	}
+
+	if ( MainCodeLineNumber == 0 ) {
+	  fprintf(stderr, "Missing code line number\n");
+	  MainDisplayHelp();
+	  exit(EXIT_FAILURE);
+	}
+	return;
+  }
   if ( MainAddGlobalHeaders ) {
 	if ( MainGlobalHeaderName == NULL ) {
 	  fprintf(stderr, "Missing global header name\n");
@@ -1589,6 +1708,10 @@ MainDisplayHelp
 {
   fprintf(stdout, "Usage : %s options\n", MainProgramName);
   fprintf(stdout, "         -c,  --createmoduledir          : Specify the creation of a module directory\n");
+  fprintf(stdout, "         -C,  --codeline line            : Specify the code line to replace\n");
+  fprintf(stdout, "                                           (requires -N option)\n");
+  fprintf(stdout, "                                           (requires -m module name)\n");
+  fprintf(stdout, "                                           (optionaly uses -f function name)\n");
   fprintf(stdout, "         -d,  --data dataname            : Specify the data name\n");
   fprintf(stdout, "         -f,  --function function-name   : Specify the function name\n");
   fprintf(stdout, "         -G,  --addglobalheader filename : Specify the global header name to be added\n");
@@ -1603,10 +1726,11 @@ MainDisplayHelp
   fprintf(stdout, "                                           (requires module name)\n");
   fprintf(stdout, "         -m,  --module module-name       : Specifiy the module name (if any)\n");
   fprintf(stdout, "         -M,  --createmakefile           : Specify the creation of a new Makefile\n");
-  fprintf(stdout, "                                           (requires target name)\n");
-  fprintf(stdout, "                                           (optionally uses makefile objects\n");
+  fprintf(stdout, "                                           (requirestarget name)\n");
+  fprintf(stdout, "                                           (optionaly uses makefile objects\n");
   fprintf(stdout, "         -n,  --newmodule modulename     : Specify a new module\n");
-  fprintf(stdout, "         -nd, --newmoduledirectory       : Specifiy a new module directory is to be created\n");
+  fprintf(stdout, "         -nd, --newmoduledirectory       : Specify a new module directory is to be created\n");
+  fprintf(stdout, "         -N,  --linenumber               : Specify a line number which is to be replaces\n");
   fprintf(stdout, "         -o,  --overwrite                : Specify to overwrite function file if it exists\n");
   fprintf(stdout, "         -O,  --makefileobjects {name}*  : Specify a list of makefile objects\n");
   fprintf(stdout, "         -p,  --parameters {type name}*  : Specify the function parameters (must be last option)\n");
@@ -2066,3 +2190,29 @@ CreateMakefile
   fclose(file);
   fprintf(stdout, "%s created\n", MainMakefileName);
 }
+
+/*****************************************************************************!
+ * Function : CreateFunctionFilename
+ *****************************************************************************/
+string
+CreateFunctionFilename
+()
+{
+  string                                filename;
+
+  if ( NULL == MainModuleName ) {
+	return NULL;
+  }
+
+  if ( NULL == MainFunctionName ) {
+	return NULL;
+  }
+
+  if ( FileExists(MainModuleName) ) {
+	filename = StringMultiConcat(MainModuleName, "/", MainFunctionName, MainSourceSuffix, NULL);
+  } else {
+	filename = StringMultiConcat(MainFunctionName, MainSourceSuffix, NULL);
+  }
+  return filename;
+}
+
