@@ -1,7 +1,7 @@
 /*****************************************************************************
  * FILE NAME    : main.c
  * DATE         : August 01 2020
- * PROJECT      :  
+ * PROJECT      :
  * COPYRIGHT    : Copyright (C) 2020 by Gregory R Saltis
  *****************************************************************************/
 
@@ -73,6 +73,18 @@ typedef enum _FunctionType FunctionType;
 /*****************************************************************************!
  * Local Data
  *****************************************************************************/
+StringList*
+MainMakefileObjects = NULL;
+
+string
+MainMakefileName = "Makefile";
+
+static bool
+MainCreateMakefile = false;
+
+static string
+MainTarget = NULL;
+
 static string
 MainInitializeDataValue = NULL;
 
@@ -130,7 +142,7 @@ MainFunctionName;
 static Parameter*
 MainParameters;
 
-static string 
+static string
 MainMonths[] = {
   "January", "February", "March",     "April",   "May",      "June",
   "July",    "August",   "September", "October", "November", "December"
@@ -151,7 +163,7 @@ FunctionHeaderTemplate =
   " *****************************************************************************/\n";
 
 static string
-StructHeaderTemplate = 
+StructHeaderTemplate =
   "/*****************************************************************************!\n"
   " * Exported Type : %s\n"
   " *****************************************************************************/\n";
@@ -298,6 +310,10 @@ void
 MainHandleAddLocalHeader
 ();
 
+void
+CreateMakefile
+();
+
 /*****************************************************************************!
  * Function : main
  *****************************************************************************/
@@ -308,7 +324,9 @@ main
   MainInitialize();
   ProcessCommandLine(argc, argv);
   VerifyCommandLine();
-  if ( MainAddGlobalHeaders ) {
+  if ( MainCreateMakefile ) {
+	CreateMakefile();
+  } else if ( MainAddGlobalHeaders ) {
 	MainHandleAddGlobalHeader();
   } else if ( MainAddLocalHeaders ) {
 	MainHandleAddLocalHeader();
@@ -348,7 +366,7 @@ MainHandleAddGlobalHeader
   } else {
 	filename = StringMultiConcat(MainModuleName, MainSourceSuffix, NULL);
   }
-  
+ 
   headername = StringMultiConcat("<", MainGlobalHeaderName,  ">", NULL);
 
   if ( !GetFileBuffer(filename, &buffer, &bufferSize) ) {
@@ -448,7 +466,7 @@ MainHandleAddLocalHeader
   } else {
 	filename = StringMultiConcat(MainModuleName, MainSourceSuffix, NULL);
   }
-  
+ 
   headername = StringMultiConcat("\"", MainLocalHeaderName,  "\"", NULL);
 
   if ( !GetFileBuffer(filename, &buffer, &bufferSize) ) {
@@ -700,7 +718,7 @@ MainAddNewStructure
 	  FreeMemory(lines[i]);
 	  i++;
 	  fprintf(file, "%s\n", lines[i]);
- 	  fprintf(file, "#include \"%s\"\n", filename);  
+ 	  fprintf(file, "#include \"%s\"\n", filename);
 	}
 
 	FreeMemory(lines[i]);
@@ -710,7 +728,7 @@ MainAddNewStructure
   FreeMemory(filename2);
   FreeMemory(filename);
   fclose(file);
-		   
+	
 }
 
 /*****************************************************************************!
@@ -798,7 +816,7 @@ MainCreateFileHeader
   fprintf(InFile, "/*****************************************************************************\n");
   fprintf(InFile, " * FILE NAME    : %s\n", InFilename);
   fprintf(InFile, " * DATE         : %s\n", timeString);
-  fprintf(InFile, " * PROJECT      : %s\n", MainProjectName); 
+  fprintf(InFile, " * PROJECT      : %s\n", MainProjectName);
   fprintf(InFile, " * COPYRIGHT    : Copyright (C) %d by %s\n", tm->tm_year + 1900, MainCopyrightHolderName);
   fprintf(InFile, " *****************************************************************************/\n");
 }
@@ -856,7 +874,7 @@ MainAddDataDefinition
   char*                                 buffer;
   int                                   bufferSize;
   char**                                lines;
-  int                                   linesCount; 
+  int                                   linesCount;
   int                                   i;
   string                                line;
 
@@ -931,7 +949,7 @@ InsertDataDefinition
   for ( j = insertPoint; j < linesCount; j++, i++) {
     newLines[i] = lines[j];
   }
-  
+ 
   FreeMemory(lines);
   *InLines = newLines;
   *InLinesCount = newLinesCount;
@@ -965,7 +983,7 @@ MainAddDataDeclaration()
       i += 2;
       InsertDataDefinition(&lines, &linesCount, i, true);
       ResaveFile(MainHeaderName, lines, linesCount);
-    } 
+    }
   }
 
   for ( i = 0 ; i < linesCount ; i++ ) {
@@ -996,7 +1014,7 @@ MainInitialize
 }
 
 /*****************************************************************************!
- * Function : MainAddFunctionInclude 
+ * Function : MainAddFunctionInclude
  *****************************************************************************/
 void
 MainAddFunctionInclude
@@ -1046,12 +1064,47 @@ ProcessCommandLine
   int                                   i;
   string                                command;
   Parameter*                            parameter;
-  
+ 
   for ( i = 1; i < argc; i++ ) {
     command = argv[i];
 
     if ( StringEqualsOneOf(command, "-se", "--structelement", NULL) ) {
 	  MainAddStructElements = true;
+	  continue;
+	}
+
+	if ( StringEqualsOneOf(command, "-M", "--createmakefile", NULL ) ) {
+	  MainCreateMakefile = true;
+	  continue;
+	}
+
+	if ( StringEqualsOneOf(command, "-O", "--mainobjects", NULL) ) {
+	  i++;
+	  if ( i == argc ) {
+	    fprintf(stderr, "%s requires a series of objects\n", command);
+	    MainDisplayHelp();
+	    exit(EXIT_FAILURE);
+	  }
+	  MainMakefileObjects = StringListCreate();
+	  while ( i < argc ) {
+	    StringListAppend(MainMakefileObjects, StringCopy(argv[i]));
+	    i++;
+	  }
+	  continue;
+	}
+
+	if ( StringEqualsOneOf(command, "-T", "--target", NULL) ) {
+	  i++;
+	
+	  if ( i == argc  ) {
+		fprintf(stderr, "%s requires a target name\n", command);
+		MainDisplayHelp();
+		exit(EXIT_FAILURE);
+	  }
+	  if ( MainTarget ) {
+		FreeMemory(MainTarget);
+	  }
+	  MainTarget = StringCopy(argv[i]);
 	  continue;
 	}
 
@@ -1074,7 +1127,7 @@ ProcessCommandLine
       exit(EXIT_SUCCESS);
     }
 
-	// 
+	//
 	if ( StringEqualsOneOf(command, "-i", "--init", NULL) ) {
 	  i++;
 	  if ( i == argc ) {
@@ -1089,7 +1142,7 @@ ProcessCommandLine
       continue;
 	}
 
-	// 
+	//
 	if ( StringEqualsOneOf(command, "-v", "--version", NULL) ) {
 	  fprintf(stdout, "%s : Version %s\n", MainProgramName, MainVersion);
 	  exit(EXIT_SUCCESS);
@@ -1279,7 +1332,7 @@ ProcessCommandLine
       MainOverwriteFunctionFile = true;
       continue;
     }
-   
+ 
     //!
 	if ( StringEqualsOneOf(command, "-c", "--createmoduledir", NULL) ) {
 	  MainCreateModuleDirectory = true;
@@ -1380,6 +1433,15 @@ VerifyCommandLine
 	}
   }
 
+  if ( MainCreateMakefile ) {
+	if ( MainTarget == NULL ) {
+	  fprintf(stderr, "Missing target name\n");
+	  MainDisplayHelp();
+	  exit(EXIT_FAILURE);
+	}
+	return;
+  }
+
   if ( MainAddLocalHeaders ) {
 	if ( MainLocalHeaderName == NULL ) {
 	  fprintf(stderr, "Missing local header name\n");
@@ -1418,7 +1480,7 @@ VerifyCommandLine
   if ( MainModuleName ) {
     MainHeaderName = StringConcat(MainModuleName, MainHeaderSuffix);
     MainSourceName = StringConcat(MainModuleName, MainSourceSuffix);
-  }  
+  }
 
   // Check to see if we have to create a new module directory
   if ( MainNewModuleName ) {
@@ -1442,7 +1504,7 @@ VerifyCommandLine
 	  fprintf(stderr, "%s%s exists%s\n", ColorBrightRed, MainHeaderName, ColorReset);
 	  exit(EXIT_FAILURE);
 	}
-  }  
+  }
 
   if ( MainFunctionName ) {
     //! If we have a module name and it's a directory, prepend the directory name to the output filename
@@ -1476,7 +1538,7 @@ ParameterCreate
   if ( NULL == InType && NULL == InName ) {
     return NULL;
   }
-  
+ 
   if ( StringEqual("...", InType) && NULL != InName ) {
     return NULL;
   }
@@ -1540,9 +1602,13 @@ MainDisplayHelp
   fprintf(stdout, "         -L,  --addlocalheader filename  : Specify the local header name to be added\n");
   fprintf(stdout, "                                           (requires module name)\n");
   fprintf(stdout, "         -m,  --module module-name       : Specifiy the module name (if any)\n");
+  fprintf(stdout, "         -M,  --createmakefile           : Specify the creation of a new Makefile\n");
+  fprintf(stdout, "                                           (requires target name)\n");
+  fprintf(stdout, "                                           (optionally uses makefile objects\n");
   fprintf(stdout, "         -n,  --newmodule modulename     : Specify a new module\n");
   fprintf(stdout, "         -nd, --newmoduledirectory       : Specifiy a new module directory is to be created\n");
   fprintf(stdout, "         -o,  --overwrite                : Specify to overwrite function file if it exists\n");
+  fprintf(stdout, "         -O,  --makefileobjects {name}*  : Specify a list of makefile objects\n");
   fprintf(stdout, "         -p,  --parameters {type name}*  : Specify the function parameters (must be last option)\n");
   fprintf(stdout, "         -P,  --typelessparameters name* : Specify the function parameters (must be last option)\n");
   fprintf(stdout, "         -r,  --returntype type          : Specify the return type of a function\n");
@@ -1550,6 +1616,7 @@ MainDisplayHelp
   fprintf(stdout, "         -se, --structelement name       : Specify a new structure element\n");
   fprintf(stdout, "                                           (requires module name, struct name and -p elements\n");
   fprintf(stdout, "         -t,  --datatype datatype        : Specify the type of a new data item\n");
+  fprintf(stdout, "         -T,  --target name              : Specifies a makefile main target\n");
   fprintf(stdout, "         -v,  --version                  : Display the version number\n");
 }
 
@@ -1620,7 +1687,7 @@ MainWriteJavascriptFunctionFile
   fprintf(file, "{\n");
   fprintf(file, "}\n");
   fclose(file);
-  
+ 
   FreeMemory(filename);
 }
 
@@ -1650,7 +1717,7 @@ MainAddFunctionDeclaration
 }
 
 /*****************************************************************************!
- * Function : MainAddFunctionToSource 
+ * Function : MainAddFunctionToSource
  *****************************************************************************/
 void
 MainAddFunctionToSource
@@ -1816,7 +1883,7 @@ InsertFunctionDeclaration
   for ( j = insertPoint; j < linesCount; j++, i++) {
     newLines[i] = lines[j];
   }
-  
+ 
   FreeMemory(lines);
   *InLines = newLines;
   *InLinesCount = newLinesCount;
@@ -1874,10 +1941,10 @@ MainInsertFunctionInclude
     filename = StringMultiConcat(MainFunctionName, MainSourceSuffix, NULL);
   }
   s = StringMultiConcat("#include \"", filename, "\"\n", NULL);
-  
+ 
   lines = *InLines;
   linesCount = *InLinesCount;
-  
+ 
   newLinesCount = linesCount + 1;
 
   newLines = (char**)GetMemory(newLinesCount * sizeof(char*));
@@ -1934,3 +2001,68 @@ MainCreateBlock
   fprintf(InFile, " *****************************************************************************/\n");
 }
 
+
+/*****************************************************************************!
+ * Function : CreateMakefile
+ *****************************************************************************/
+void
+CreateMakefile
+()
+{
+  FILE*                                 file;
+  int                                   i, m, k;
+
+  if ( MainTarget == NULL  ) {
+    return;
+  }
+
+  file = fopen(MainMakefileName, "wb");
+  if ( NULL == file ) {
+	fprintf(stderr, "Could not open %s for writing : %s\n", MainMakefileName, strerror(errno));
+	exit(EXIT_FAILURE);
+  }
+
+  fprintf(file, "CC					= gcc\n");
+  fprintf(file, "LINK					= gcc\n");
+  fprintf(file, "CC_OPTS					= -c -g -Wall\n");
+  fprintf(file, "CC_INCS					= \n");
+  fprintf(file, "LINK_OPTS				= -g\n");
+  fprintf(file, "LINK_LIBS				= \n");
+  fprintf(file, "\n");
+  fprintf(file, "TARGET					= %s\n", MainTarget);
+  fprintf(file, "OBJS					= $(sort				\\\n");
+  for ( i = 0 ; i < MainMakefileObjects->stringCount; i++ ) {
+    fprintf(file, "					    %s", MainMakefileObjects->strings[i]);
+	m = (44 + strlen(MainMakefileObjects->strings[i])) / 8;
+	if ( m >= 10 ) {
+	  m = 9;
+	}
+	for ( k = m; k < 10; k++  ) {
+	  fprintf(file, "\t");
+	}
+	fprintf(file, "\\\n");
+  }
+  fprintf(file, "					   )\n");
+  fprintf(file, "LIBS					= \n");
+  fprintf(file, "%%.o					: %%.c\n");
+  fprintf(file, "\n");
+  fprintf(file, "					  @echo [CC] $<\n");
+  fprintf(file, "					  @$(CC) $(CC_OPTS) $(CC_INCS) $<\n");
+  fprintf(file, "\n");
+  fprintf(file, ".PHONY					: $(TARGET)\n");
+  fprintf(file, "$(TARGET)				: $(OBJS)\n");
+  fprintf(file, "					  @echo [LD] $(TARGET)\n");
+  fprintf(file, "					  @$(LINK) $(LINK_OPTS) -o $(TARGET) $(OBJS) $(LINK_LIBS) $(LIBS)\n");
+  fprintf(file, "\n");
+  fprintf(file, "include				   	  depends.mk\n");
+  fprintf(file, "\n");
+  fprintf(file, ".PHONY					: junkclean\n");
+  fprintf(file, "junkclean				: \n");
+  fprintf(file, "					  rm -rf $(wildcard *~ *-bak);\n");
+  fprintf(file, "\n");
+  fprintf(file, ".PHONY					: clean\n");
+  fprintf(file, "clean					: junkclean\n");
+  fprintf(file, "					  rm -rf $(wildcard $(OBJS) $(TARGET)\n");
+  fclose(file);
+  fprintf(stdout, "%s created\n", MainMakefileName);
+}
