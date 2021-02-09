@@ -15,15 +15,15 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
+#include <StringUtils.h>
+#include <MemoryManager.h>
+#include <ascii.h>
+#include <ANSIColors.h>
+#include <FileUtils.h>
 
 /*****************************************************************************!
  * Local Headers
  *****************************************************************************/
-#include "String.h"
-#include "MemoryManager.h"
-#include "ascii.h"
-#include "ANSIColors.h"
-#include "FileUtils.h"
 
 /*****************************************************************************!
  * Local Macros

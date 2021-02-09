@@ -21,16 +21,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <StringUtils.h>
+#include <MemoryManager.h>
+#include <ascii.h>
+#include <ANSIColors.h>
+#include <FileUtils.h>
 
 /*****************************************************************************!
  * Local Headers
  *****************************************************************************/
-#include "String.h"
-#include "MemoryManager.h"
-#include "ascii.h"
-#include "ANSIColors.h"
-#include "FileUtils.h"
-
 /*****************************************************************************!
  * Local Macros
  *****************************************************************************/

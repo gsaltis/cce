@@ -5,13 +5,13 @@ INSTALL			= install
 CC_FLAGS		= -g -Wall -c
 LINK_FLAGS		= -g
 INSTALL_FLAGS		= -s
-
+LIBS			= -lutils
 EX_EXTENSION		= 
 
 TARGET			= cce$(EX_EXTENSION)
 BINDIR			= /usr/local/bin
 
-OBJS			= $(sort main.o String.o MemoryManager.o FileUtils.o)
+OBJS			= $(sort main.o)
 
 %.o			: %.c
 			  @echo [CC] $@
@@ -19,7 +19,7 @@ OBJS			= $(sort main.o String.o MemoryManager.o FileUtils.o)
 
 $(TARGET)		: $(OBJS)
 			  @echo [LD] $@
-			  @$(LINK) $(LINK_FLAGS) -o $(TARGET) $(OBJS)
+			  $(LINK) $(LINK_FLAGS) -o $(TARGET) $(OBJS) $(LIBS)
 
 include			  depends.mk
 
