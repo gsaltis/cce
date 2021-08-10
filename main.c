@@ -33,8 +33,8 @@
 /*****************************************************************************!
  * Local Macros
  *****************************************************************************/
-#define MAIN_DEFAULT_PROJECT_NAME			"NONE"
-#define MAIN_DEFAULT_COPYRIGHT_HOLDER_NAME	"Gregory R Saltis"
+#define MAIN_DEFAULT_PROJECT_NAME                       "NONE"
+#define MAIN_DEFAULT_COPYRIGHT_HOLDER_NAME      "Gregory R Saltis"
 
 /*****************************************************************************!
  * Exported Type : Parameter
@@ -63,7 +63,7 @@ typedef enum _ElementScope ElementScope;
  *****************************************************************************/
 enum _FunctionType
 {
-  FunctionTypeNone					= 0,
+  FunctionTypeNone                                      = 0,
   FunctionTypeC,
   FunctionTypeJavascript
 };
@@ -341,23 +341,23 @@ main
   ProcessCommandLine(argc, argv);
   VerifyCommandLine();
   if ( MainReplaceCodeLine ) {
-	ReplaceCodeLine();
+        ReplaceCodeLine();
   } else if ( MainCreateMakefile ) {
-	CreateMakefile();
+        CreateMakefile();
   } else if ( MainAddGlobalHeaders ) {
-	MainHandleAddGlobalHeader();
+        MainHandleAddGlobalHeader();
   } else if ( MainAddLocalHeaders ) {
-	MainHandleAddLocalHeader();
+        MainHandleAddLocalHeader();
   } else if ( MainFunctionName ) {
     MainAddFunctionItem();
   } else if ( MainDataName ) {
     MainAddDataItem();
   } else if ( MainNewModuleName ) {
-	MainAddNewModuleItem();
+        MainAddNewModuleItem();
   } else if ( MainAddStructElements ) {
-	MainAddNewStructElements();
+        MainAddNewStructElements();
   } else if ( MainStructName ) {
-	MainAddNewStructure();
+        MainAddNewStructure();
   }
   return EXIT_SUCCESS;
 }
@@ -370,34 +370,34 @@ ReplaceCodeLine
 ()
 {
   string                                filename;
-  char*									buffer;
+  char*                                                                 buffer;
   int                                   bufferLen;
   char**                                lines;
   int                                   lineCount;
-  int									n, i;
-  FILE*									file;
+  int                                                                   n, i;
+  FILE*                                                                 file;
 
   filename = CreateFunctionFilename();
   if ( NULL == filename ) {
-	fprintf(stderr, "Could not create function filename\n");
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "Could not create function filename\n");
+        exit(EXIT_FAILURE);
   }
   if ( !FileExists(filename) ) {
-	fprintf(stderr, "%s does not exist\n", filename);
-	FreeMemory(filename);
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "%s does not exist\n", filename);
+        FreeMemory(filename);
+        exit(EXIT_FAILURE);
   }
   if ( !GetFileBuffer(filename, &buffer, &bufferLen) ) {
-	fprintf(stderr, "Could not read %s : %s\n", filename, strerror(errno));
-	FreeMemory(filename);
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "Could not read %s : %s\n", filename, strerror(errno));
+        FreeMemory(filename);
+        exit(EXIT_FAILURE);
   }
   GetFileLines(buffer, bufferLen, &lines, &lineCount);
   FreeMemory(buffer);
 
   if ( lineCount < MainCodeLineNumber ) {
-	fprintf(stderr, "%d line does not exists in %s\n", MainCodeLineNumber, filename);
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "%d line does not exists in %s\n", MainCodeLineNumber, filename);
+        exit(EXIT_FAILURE);
   }
 
   n = MainCodeLineNumber - 1;
@@ -406,11 +406,11 @@ ReplaceCodeLine
   lines[n] = StringCopy(MainCodeLine);
   file = fopen(filename, "wb");
   if ( NULL == file ) {
-	fprintf(stderr, "Could not open %s for writing : %s\n", filename, strerror(errno));
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "Could not open %s for writing : %s\n", filename, strerror(errno));
+        exit(EXIT_FAILURE);
   }
   for ( i = 0 ; i < lineCount; i++ ) {
-	fprintf(file, "%s\n", lines[i]);
+        fprintf(file, "%s\n", lines[i]);
   }
   fclose(file);
   fprintf(stderr, "%s updated\n", filename);
@@ -423,87 +423,87 @@ void
 MainHandleAddGlobalHeader
 ()
 {
-  string								filename;
-  string								headername;
-  char*									buffer;
-  char**								lines;
-  int									bufferSize;
-  int									linesCount;
-  FILE*									file;
-  int									i;
-  bool									needExtraLine;
+  string                                                                filename;
+  string                                                                headername;
+  char*                                                                 buffer;
+  char**                                                                lines;
+  int                                                                   bufferSize;
+  int                                                                   linesCount;
+  FILE*                                                                 file;
+  int                                                                   i;
+  bool                                                                  needExtraLine;
 
   if ( MainElementScope == ElementScopeGlobal ) {
-	filename = StringMultiConcat(MainModuleName, MainHeaderSuffix, NULL);
+        filename = StringMultiConcat(MainModuleName, MainHeaderSuffix, NULL);
   } else {
-	filename = StringMultiConcat(MainModuleName, MainSourceSuffix, NULL);
+        filename = StringMultiConcat(MainModuleName, MainSourceSuffix, NULL);
   }
  
   headername = StringMultiConcat("<", MainGlobalHeaderName,  ">", NULL);
 
   if ( !GetFileBuffer(filename, &buffer, &bufferSize) ) {
-	fprintf(stderr, "Could not read contents of %s\n", filename);
-	FreeMemory(filename);
-	FreeMemory(headername);
+        fprintf(stderr, "Could not read contents of %s\n", filename);
+        FreeMemory(filename);
+        FreeMemory(headername);
   }
 
   CreateFileBackupCopy(filename);
   if ( unlink(filename) != 0 ) {
-	fprintf(stderr, "Could not remove %s\n", filename);
-	FreeMemory(filename);
-	FreeMemory(headername);
-	FreeMemory(buffer);
+        fprintf(stderr, "Could not remove %s\n", filename);
+        FreeMemory(filename);
+        FreeMemory(headername);
+        FreeMemory(buffer);
   }
   GetFileLines(buffer, bufferSize, &lines, &linesCount);
   file = fopen(filename, "wb");
   if ( NULL == file  ) {
     fprintf(stderr, "Could not open %s for output : %s\n", filename, strerror(errno));
-	FreeMemory(filename);
-	FreeMemory(headername);
-	FreeMemory(buffer);
-	for (i = 0; i < linesCount; i++ ) {
-	  FreeMemory(lines[i]);
-	}
-	FreeMemory(lines);
-	exit(EXIT_FAILURE);
+        FreeMemory(filename);
+        FreeMemory(headername);
+        FreeMemory(buffer);
+        for (i = 0; i < linesCount; i++ ) {
+          FreeMemory(lines[i]);
+        }
+        FreeMemory(lines);
+        exit(EXIT_FAILURE);
   }
   for ( i = 0 ; i < linesCount; i++ ) {
-	fprintf(file, "%s\n", lines[i]);
-	if ( StringEqual(lines[i], " * Global Headers") ) {
-	  break;
-	}
+        fprintf(file, "%s\n", lines[i]);
+        if ( StringEqual(lines[i], " * Global Headers") ) {
+          break;
+        }
   }
 
   if ( i == linesCount ) {
-	fprintf(stderr, "No Global Headers section found in f%s\n", filename);
-	FreeMemory(filename);
-	FreeMemory(headername);
-	FreeMemory(buffer);
-	for (i = 0; i < linesCount; i++ ) {
-	  FreeMemory(lines[i]);
-	}
-	FreeMemory(lines);
-	return;
+        fprintf(stderr, "No Global Headers section found in f%s\n", filename);
+        FreeMemory(filename);
+        FreeMemory(headername);
+        FreeMemory(buffer);
+        for (i = 0; i < linesCount; i++ ) {
+          FreeMemory(lines[i]);
+        }
+        FreeMemory(lines);
+        return;
   }
   i++;
   needExtraLine = false;
   fprintf(file, "%s\n", lines[i]);
   for ( i++ ; i < linesCount; i++ ) {
-	if ( lines[i][0] == 0x00 ) {
-	  break;
-	}
-	if ( lines[i][0] == '/' ) {
-	  needExtraLine = true;
-	  break;
-	}
-	fprintf(file, "%s\n", lines[i]);
+        if ( lines[i][0] == 0x00 ) {
+          break;
+        }
+        if ( lines[i][0] == '/' ) {
+          needExtraLine = true;
+          break;
+        }
+        fprintf(file, "%s\n", lines[i]);
   }
   fprintf(file, "#include %s\n", headername);
   if ( needExtraLine ) {
-	fprintf(file, "\n");
+        fprintf(file, "\n");
   }
   for ( ; i < linesCount; i++ ) {
-	fprintf(file, "%s\n", lines[i]);
+        fprintf(file, "%s\n", lines[i]);
   }
   fclose(file);
 
@@ -511,7 +511,7 @@ MainHandleAddGlobalHeader
   FreeMemory(buffer);
   FreeMemory(headername);
   for ( i = 0 ; i < linesCount ; i++ ) {
-	FreeMemory(lines[i]);
+        FreeMemory(lines[i]);
   }
   FreeMemory(lines);
 }
@@ -523,87 +523,87 @@ void
 MainHandleAddLocalHeader
 ()
 {
-  string								filename;
-  string								headername;
-  char*									buffer;
-  char**								lines;
-  int									bufferSize;
-  int									linesCount;
-  FILE*									file;
-  int									i;
-  bool									needExtraLine;
+  string                                                                filename;
+  string                                                                headername;
+  char*                                                                 buffer;
+  char**                                                                lines;
+  int                                                                   bufferSize;
+  int                                                                   linesCount;
+  FILE*                                                                 file;
+  int                                                                   i;
+  bool                                                                  needExtraLine;
 
   if ( MainElementScope == ElementScopeGlobal ) {
-	filename = StringMultiConcat(MainModuleName, MainHeaderSuffix, NULL);
+        filename = StringMultiConcat(MainModuleName, MainHeaderSuffix, NULL);
   } else {
-	filename = StringMultiConcat(MainModuleName, MainSourceSuffix, NULL);
+        filename = StringMultiConcat(MainModuleName, MainSourceSuffix, NULL);
   }
  
   headername = StringMultiConcat("\"", MainLocalHeaderName,  "\"", NULL);
 
   if ( !GetFileBuffer(filename, &buffer, &bufferSize) ) {
-	fprintf(stderr, "Could not read contents of %s\n", filename);
-	FreeMemory(filename);
-	FreeMemory(headername);
+        fprintf(stderr, "Could not read contents of %s\n", filename);
+        FreeMemory(filename);
+        FreeMemory(headername);
   }
 
   CreateFileBackupCopy(filename);
   if ( unlink(filename) != 0 ) {
-	fprintf(stderr, "Could not remove %s\n", filename);
-	FreeMemory(filename);
-	FreeMemory(headername);
-	FreeMemory(buffer);
+        fprintf(stderr, "Could not remove %s\n", filename);
+        FreeMemory(filename);
+        FreeMemory(headername);
+        FreeMemory(buffer);
   }
   GetFileLines(buffer, bufferSize, &lines, &linesCount);
   file = fopen(filename, "wb");
   if ( NULL == file  ) {
     fprintf(stderr, "Could not open %s for output : %s\n", filename, strerror(errno));
-	FreeMemory(filename);
-	FreeMemory(headername);
-	FreeMemory(buffer);
-	for (i = 0; i < linesCount; i++ ) {
-	  FreeMemory(lines[i]);
-	}
-	FreeMemory(lines);
-	exit(EXIT_FAILURE);
+        FreeMemory(filename);
+        FreeMemory(headername);
+        FreeMemory(buffer);
+        for (i = 0; i < linesCount; i++ ) {
+          FreeMemory(lines[i]);
+        }
+        FreeMemory(lines);
+        exit(EXIT_FAILURE);
   }
   for ( i = 0 ; i < linesCount; i++ ) {
-	fprintf(file, "%s\n", lines[i]);
-	if ( StringEqual(lines[i], " * Local Headers") ) {
-	  break;
-	}
+        fprintf(file, "%s\n", lines[i]);
+        if ( StringEqual(lines[i], " * Local Headers") ) {
+          break;
+        }
   }
 
   if ( i == linesCount ) {
-	fprintf(stderr, "No Local Headers section found in f%s\n", filename);
-	FreeMemory(filename);
-	FreeMemory(headername);
-	FreeMemory(buffer);
-	for (i = 0; i < linesCount; i++ ) {
-	  FreeMemory(lines[i]);
-	}
-	FreeMemory(lines);
-	return;
+        fprintf(stderr, "No Local Headers section found in f%s\n", filename);
+        FreeMemory(filename);
+        FreeMemory(headername);
+        FreeMemory(buffer);
+        for (i = 0; i < linesCount; i++ ) {
+          FreeMemory(lines[i]);
+        }
+        FreeMemory(lines);
+        return;
   }
   i++;
   needExtraLine = false;
   fprintf(file, "%s\n", lines[i]);
   for ( i++ ; i < linesCount; i++ ) {
-	if ( lines[i][0] == 0x00 ) {
-	  break;
-	}
-	if ( lines[i][0] == '/' ) {
-	  needExtraLine = true;
-	  break;
-	}
-	fprintf(file, "%s\n", lines[i]);
+        if ( lines[i][0] == 0x00 ) {
+          break;
+        }
+        if ( lines[i][0] == '/' ) {
+          needExtraLine = true;
+          break;
+        }
+        fprintf(file, "%s\n", lines[i]);
   }
   fprintf(file, "#include %s\n", headername);
   if ( needExtraLine ) {
-	fprintf(file, "\n");
+        fprintf(file, "\n");
   }
   for ( ; i < linesCount; i++ ) {
-	fprintf(file, "%s\n", lines[i]);
+        fprintf(file, "%s\n", lines[i]);
   }
   fclose(file);
 
@@ -611,7 +611,7 @@ MainHandleAddLocalHeader
   FreeMemory(buffer);
   FreeMemory(headername);
   for ( i = 0 ; i < linesCount ; i++ ) {
-	FreeMemory(lines[i]);
+        FreeMemory(lines[i]);
   }
   FreeMemory(lines);
 }
@@ -624,46 +624,46 @@ void
 MainAddNewStructElements
 ()
 {
-  string								filename;
-  char*									buffer;
-  int									bufferLength;
-  char**								lines;
-  int									linesCount;
-  FILE*									file;
-  int									i;
+  string                                                                filename;
+  char*                                                                 buffer;
+  int                                                                   bufferLength;
+  char**                                                                lines;
+  int                                                                   linesCount;
+  FILE*                                                                 file;
+  int                                                                   i;
 
   if ( MainModuleName == NULL ) {
- 	fprintf(stderr, "No module name specified\n");
-	return;
+        fprintf(stderr, "No module name specified\n");
+        return;
   }
   if ( MainStructName == NULL ) {
-	fprintf(stderr, "No structure name specified\n");
+        fprintf(stderr, "No structure name specified\n");
     return;
   }
   if ( MainParameters == NULL ) {
-	fprintf(stderr, "No structure elements specified\n");
+        fprintf(stderr, "No structure elements specified\n");
     return;
   }
 
   //! Build the structure file name
   if ( FileExists(MainModuleName) ) {
-	filename = StringMultiConcat(MainModuleName, "/", MainStructName, MainHeaderSuffix, NULL);
+        filename = StringMultiConcat(MainModuleName, "/", MainStructName, MainHeaderSuffix, NULL);
   } else {
-   	filename = StringMultiConcat(MainStructName, MainHeaderSuffix);
+        filename = StringMultiConcat(MainStructName, MainHeaderSuffix);
   }
 
   //! Open the file and get the lines
   if ( !GetFileBuffer(filename, &buffer, &bufferLength) ) {
-	fprintf(stderr, "Could not read contents of %s\n", filename);
-	FreeMemory(filename);
-	return;
+        fprintf(stderr, "Could not read contents of %s\n", filename);
+        FreeMemory(filename);
+        return;
   }
   GetFileLines(buffer, bufferLength, &lines, &linesCount);
 
   //! Open the header file for output
   if ( 0 != unlink(filename) ) {
-	fprintf(stderr, "Could not unlink %s : %s\n", filename, strerror(errno));
-	return;
+        fprintf(stderr, "Could not unlink %s : %s\n", filename, strerror(errno));
+        return;
   }
 
   //! Backup the file before we start changing it
@@ -678,32 +678,32 @@ MainAddNewStructElements
   //! Loop over the lines and write out the ones before the insert point
   //  (the open brace of the struct - should be first character in line
   for (i = 0; i < linesCount; i++) {
-	fprintf(file, "%s\n", lines[i]);
-	if ( StringEqual("{", lines[i]) ) {
-	  i++;
-	  break;
+        fprintf(file, "%s\n", lines[i]);
+        if ( StringEqual("{", lines[i]) ) {
+          i++;
+          break;
     }
   }
 
   if ( i == linesCount ) {
-	fprintf(stderr, "Could not find the begining of the structure %s\n", MainStructName);
-	return;
+        fprintf(stderr, "Could not find the begining of the structure %s\n", MainStructName);
+        return;
   }
-	
+        
   //! Insert the elements
   for ( Parameter* parameter = MainParameters; parameter; parameter = parameter->next ) {
-  	int									k;
-	k = fprintf(file, "  %s", parameter->type);
-	k = 40 - k;
-	if ( k < 1 ) {
-	  k = 1;
+        int                                                                     k;
+        k = fprintf(file, "  %s", parameter->type);
+        k = 40 - k;
+        if ( k < 1 ) {
+          k = 1;
     }
     fprintf(file, "%*s%s;\n", k, " ", parameter->name);
   }
 
   //! Write out the remainder of the structure
   for ( ; i < linesCount; i++) {
-	fprintf(file, "%s\n", lines[i]);
+        fprintf(file, "%s\n", lines[i]);
   }
 
   //! Close the file
@@ -711,7 +711,7 @@ MainAddNewStructElements
 
   //! Free any memory we got
   for ( i = 0 ; i < linesCount; i++ ) {
-	FreeMemory(lines[i]);
+        FreeMemory(lines[i]);
   }
   FreeMemory(buffer);
   FreeMemory(lines);
@@ -725,37 +725,37 @@ void
 MainAddNewStructure
 ()
 {
-  string								filename;
-  FILE*									file;
-  string								fenceDefine, s;
-  char**								lines;
-  char*									buffer;
-  int									bufferLength;
-  int									linesCount;
-  int									i, k;
-  string								filename2;
+  string                                                                filename;
+  FILE*                                                                 file;
+  string                                                                fenceDefine, s;
+  char**                                                                lines;
+  char*                                                                 buffer;
+  int                                                                   bufferLength;
+  int                                                                   linesCount;
+  int                                                                   i, k;
+  string                                                                filename2;
 
   s = StringConcat(MainStructName, MainHeaderSuffix);
   fenceDefine = StringToLowerCase(s);
   FreeMemory(s);
 
   for (s = fenceDefine ; *s; s++ ) {
-	if ( !StringContainsChar("abcdefghijklmnopqrstuvwxyz0123456789_", *s) ) {
-	  *s = '_';
-	}
+        if ( !StringContainsChar("abcdefghijklmnopqrstuvwxyz0123456789_", *s) ) {
+          *s = '_';
+        }
   }
   if ( FileExists(MainModuleName) ) {
-	filename = StringMultiConcat(MainModuleName, "/", MainStructName, MainHeaderSuffix, NULL);
+        filename = StringMultiConcat(MainModuleName, "/", MainStructName, MainHeaderSuffix, NULL);
   } else {
-	filename = StringMultiConcat(MainStructName, MainHeaderSuffix, NULL);
+        filename = StringMultiConcat(MainStructName, MainHeaderSuffix, NULL);
   }
 
   if ( FileExists(filename) && !MainOverwriteFunctionFile ) {
-	fprintf(stderr, "%s exists cannot overwrite\n", filename);
+        fprintf(stderr, "%s exists cannot overwrite\n", filename);
   }
   file = fopen(filename, "wb");
   if ( NULL == file ) {
-	fprintf(stderr, "Could not open %s : %s\n", filename, strerror(errno));
+        fprintf(stderr, "Could not open %s : %s\n", filename, strerror(errno));
   }
 
   fprintf(file, StructHeaderTemplate, MainStructName);
@@ -765,13 +765,13 @@ MainAddNewStructure
   fprintf(file, "{\n");
   if ( MainParameters ) {
     for ( Parameter* parameter = MainParameters; parameter; parameter = parameter->next ) {
-	  k = fprintf(file, "  %s", parameter->type);
-	  k = 40 - k;
-  	  if ( k <= 0 ) {
-		k = 1;
-	  }
-	  fprintf(file, "%*s%s;\n", k, " ", parameter->name);
- 	}
+          k = fprintf(file, "  %s", parameter->type);
+          k = 40 - k;
+          if ( k <= 0 ) {
+                k = 1;
+          }
+          fprintf(file, "%*s%s;\n", k, " ", parameter->name);
+        }
   }
   fprintf(file, "};\n");
   fprintf(file, "typedef struct _%s %s;\n", MainStructName, MainStructName);
@@ -785,22 +785,22 @@ MainAddNewStructure
   unlink(filename2);
   file = fopen(filename2, "wb");
   for (i = 0; i < linesCount; i++) {
-	fprintf(file, "%s\n", lines[i]);
-	if ( StringEqual(" * Local Headers", lines[i]) ) {
-	  FreeMemory(lines[i]);
-	  i++;
-	  fprintf(file, "%s\n", lines[i]);
- 	  fprintf(file, "#include \"%s\"\n", filename);
-	}
+        fprintf(file, "%s\n", lines[i]);
+        if ( StringEqual(" * Local Headers", lines[i]) ) {
+          FreeMemory(lines[i]);
+          i++;
+          fprintf(file, "%s\n", lines[i]);
+          fprintf(file, "#include \"%s\"\n", filename);
+        }
 
-	FreeMemory(lines[i]);
+        FreeMemory(lines[i]);
   }
   FreeMemory(lines);
   FreeMemory(buffer);
   FreeMemory(filename2);
   FreeMemory(filename);
   fclose(file);
-	
+        
 }
 
 /*****************************************************************************!
@@ -810,14 +810,14 @@ void
 MainAddNewModuleItem
 ()
 {
-  FILE*									file;
-  string								s, s2;
-  int									i, n;
+  FILE*                                                                 file;
+  string                                                                s, s2;
+  int                                                                   i, n;
 
   file = fopen(MainSourceName, "wb");
   if ( NULL == file ) {
-	fprintf(stderr, "Could not open %s : %s\n", MainSourceName, strerror(errno));
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "Could not open %s : %s\n", MainSourceName, strerror(errno));
+        exit(EXIT_FAILURE);
   }
   MainCreateFileHeader(MainSourceName, file);
   fprintf(file, "\n");
@@ -843,8 +843,8 @@ MainAddNewModuleItem
 
   file = fopen(MainHeaderName, "wb");
   if ( NULL == file ) {
-	fprintf(stderr, "Could not open %s : %s\n", MainHeaderName, strerror(errno));
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "Could not open %s : %s\n", MainHeaderName, strerror(errno));
+        exit(EXIT_FAILURE);
   }
   MainCreateFileHeader(MainHeaderName, file);
   s = StringReplaceChar(MainHeaderName, '.', '_');
@@ -877,9 +877,9 @@ void
 MainCreateFileHeader
 (string InFilename, FILE* InFile)
 {
-  time_t								t;
-  struct tm*							tm;
-  char									timeString[64];
+  time_t                                                                t;
+  struct tm*                                                    tm;
+  char                                                                  timeString[64];
 
   t = time(NULL);
   tm = localtime(&t);
@@ -913,7 +913,7 @@ MainAddFunctionItem
     MainAddFunctionDeclaration();
     MainAddFunctionInclude();
   } else if ( MainFunctionType == FunctionTypeJavascript ) {
-	MainWriteJavascriptFunctionFile();
+        MainWriteJavascriptFunctionFile();
   }
   fprintf(stdout, "%s created\n", MainFilename);
 }
@@ -1010,7 +1010,7 @@ InsertDataDefinition
     newLines[i++] = StringCopy(MainDataType);
   }
   if ( !InIsExtern && MainInitializeDataValue ) {
-	newLines[i++] = StringMultiConcat(MainDataName, " = ", MainInitializeDataValue, ";", NULL);
+        newLines[i++] = StringMultiConcat(MainDataName, " = ", MainInitializeDataValue, ";", NULL);
   } else {
     newLines[i++] = StringConcat(MainDataName, ";");
   }
@@ -1072,8 +1072,8 @@ void
 MainInitialize
 ()
 {
-  MainProjectName				= StringCopy(MAIN_DEFAULT_PROJECT_NAME);
-  MainCopyrightHolderName		= StringCopy(MAIN_DEFAULT_COPYRIGHT_HOLDER_NAME);
+  MainProjectName                               = StringCopy(MAIN_DEFAULT_PROJECT_NAME);
+  MainCopyrightHolderName               = StringCopy(MAIN_DEFAULT_COPYRIGHT_HOLDER_NAME);
   MainOverwriteFunctionFile     = false;
   MainFilename                  = NULL;
   MainFunctionName              = NULL;
@@ -1141,110 +1141,110 @@ ProcessCommandLine
     command = argv[i];
 
     if ( StringEqualsOneOf(command, "-se", "--structelement", NULL) ) {
-	  MainAddStructElements = true;
-	  continue;
-	}
+          MainAddStructElements = true;
+          continue;
+        }
 
-	if ( StringEqualsOneOf(command, "-M", "--createmakefile", NULL ) ) {
-	  MainCreateMakefile = true;
-	  continue;
-	}
+        if ( StringEqualsOneOf(command, "-M", "--createmakefile", NULL ) ) {
+          MainCreateMakefile = true;
+          continue;
+        }
 
-	if ( StringEqualsOneOf(command, "-C", "--codeline", NULL) ) {
-	  MainReplaceCodeLine = true;
-	  i++;
-	  if ( i == argc ) {
-		fprintf(stderr, "%s requires a line of code\n", command);
-		MainDisplayHelp();
-		exit(EXIT_FAILURE);
-	  }
-	  if ( MainCodeLine ) {
-		FreeMemory(MainCodeLine);
-	  }
-	  MainCodeLine = StringCopy(argv[i]);
-	  continue;
-	}
+        if ( StringEqualsOneOf(command, "-C", "--codeline", NULL) ) {
+          MainReplaceCodeLine = true;
+          i++;
+          if ( i == argc ) {
+                fprintf(stderr, "%s requires a line of code\n", command);
+                MainDisplayHelp();
+                exit(EXIT_FAILURE);
+          }
+          if ( MainCodeLine ) {
+                FreeMemory(MainCodeLine);
+          }
+          MainCodeLine = StringCopy(argv[i]);
+          continue;
+        }
 
-	if ( StringEqualsOneOf(command, "-N", "--linenumber", NULL) ) {
-	  i++;
-	  if ( i == argc ) {
-		fprintf(stderr, "%s requires a line number\n", command);
-	    MainDisplayHelp();
-		exit(EXIT_FAILURE);
-	  }
-	  MainCodeLineNumber = atoi(argv[i]); 
-	  continue;
-	}
+        if ( StringEqualsOneOf(command, "-N", "--linenumber", NULL) ) {
+          i++;
+          if ( i == argc ) {
+                fprintf(stderr, "%s requires a line number\n", command);
+            MainDisplayHelp();
+                exit(EXIT_FAILURE);
+          }
+          MainCodeLineNumber = atoi(argv[i]); 
+          continue;
+        }
 
-	if ( StringEqualsOneOf(command, "-O", "--mainobjects", NULL) ) {
-	  i++;
-	  if ( i == argc ) {
-	    fprintf(stderr, "%s requires a series of objects\n", command);
-	    MainDisplayHelp();
-	    exit(EXIT_FAILURE);
-	  }
-	  MainMakefileObjects = StringListCreate();
-	  while ( i < argc ) {
-	    StringListAppend(MainMakefileObjects, StringCopy(argv[i]));
-	    i++;
-	  }
-	  continue;
-	}
+        if ( StringEqualsOneOf(command, "-O", "--mainobjects", NULL) ) {
+          i++;
+          if ( i == argc ) {
+            fprintf(stderr, "%s requires a series of objects\n", command);
+            MainDisplayHelp();
+            exit(EXIT_FAILURE);
+          }
+          MainMakefileObjects = StringListCreate();
+          while ( i < argc ) {
+            StringListAppend(MainMakefileObjects, StringCopy(argv[i]));
+            i++;
+          }
+          continue;
+        }
 
-	if ( StringEqualsOneOf(command, "-T", "--target", NULL) ) {
-	  i++;
-	
-	  if ( i == argc  ) {
-		fprintf(stderr, "%s requires a target name\n", command);
-		MainDisplayHelp();
-		exit(EXIT_FAILURE);
-	  }
-	  if ( MainTarget ) {
-		FreeMemory(MainTarget);
-	  }
-	  MainTarget = StringCopy(argv[i]);
-	  continue;
-	}
+        if ( StringEqualsOneOf(command, "-T", "--target", NULL) ) {
+          i++;
+        
+          if ( i == argc  ) {
+                fprintf(stderr, "%s requires a target name\n", command);
+                MainDisplayHelp();
+                exit(EXIT_FAILURE);
+          }
+          if ( MainTarget ) {
+                FreeMemory(MainTarget);
+          }
+          MainTarget = StringCopy(argv[i]);
+          continue;
+        }
 
-	if ( StringEqualsOneOf(command, "-s", "--struct", NULL) ) {
-	  i++;
-	  if ( i == argc ) {
-		fprintf(stderr, "%s requires a structure name\n", command);
-		MainDisplayHelp();
-		exit(EXIT_FAILURE);
-	  }
-	  if ( MainStructName ) {
-		FreeMemory(MainStructName);
-	  }
-	  MainStructName = StringCopy(argv[i]);
-	  continue;
-	}
+        if ( StringEqualsOneOf(command, "-s", "--struct", NULL) ) {
+          i++;
+          if ( i == argc ) {
+                fprintf(stderr, "%s requires a structure name\n", command);
+                MainDisplayHelp();
+                exit(EXIT_FAILURE);
+          }
+          if ( MainStructName ) {
+                FreeMemory(MainStructName);
+          }
+          MainStructName = StringCopy(argv[i]);
+          continue;
+        }
 
     if ( StringEqualsOneOf(command, "-h", "--help", NULL) ) {
       MainDisplayHelp();
       exit(EXIT_SUCCESS);
     }
 
-	//
-	if ( StringEqualsOneOf(command, "-i", "--init", NULL) ) {
-	  i++;
-	  if ( i == argc ) {
-		fprintf(stderr, "%s%s is missing an initial value%s\n", ColorBrightRed, command, ColorReset);
-		MainDisplayHelp();
-		exit(EXIT_FAILURE);
-	  }
+        //
+        if ( StringEqualsOneOf(command, "-i", "--init", NULL) ) {
+          i++;
+          if ( i == argc ) {
+                fprintf(stderr, "%s%s is missing an initial value%s\n", ColorBrightRed, command, ColorReset);
+                MainDisplayHelp();
+                exit(EXIT_FAILURE);
+          }
       if ( MainInitializeDataValue ) {
-		FreeMemory(MainInitializeDataValue);
-	  }
-	  MainInitializeDataValue = StringCopy(argv[i]);
+                FreeMemory(MainInitializeDataValue);
+          }
+          MainInitializeDataValue = StringCopy(argv[i]);
       continue;
-	}
+        }
 
-	//
-	if ( StringEqualsOneOf(command, "-v", "--version", NULL) ) {
-	  fprintf(stdout, "%s : Version %s\n", MainProgramName, MainVersion);
-	  exit(EXIT_SUCCESS);
-	}
+        //
+        if ( StringEqualsOneOf(command, "-v", "--version", NULL) ) {
+          fprintf(stdout, "%s : Version %s\n", MainProgramName, MainVersion);
+          exit(EXIT_SUCCESS);
+        }
 
     //
     if ( StringEqualsOneOf(command, "-f", "--function", NULL) ) {
@@ -1262,8 +1262,8 @@ ProcessCommandLine
     }
 
     if ( StringEqualsOneOf(command, "-j", "--javascript", NULL) ) {
-	  MainFunctionType = FunctionTypeJavascript;
-  	  continue;
+          MainFunctionType = FunctionTypeJavascript;
+          continue;
     }
     if ( StringEqualsOneOf(command, "-pr", "--project", NULL) ) {
       i++;
@@ -1379,36 +1379,36 @@ ProcessCommandLine
       continue;
     }
 
-	if ( StringEqualsOneOf(command, "-L", "--addlocalheader", NULL) ) {
-	  MainAddLocalHeaders = true;
-	  i++;
-	  if ( i == argc ) {
-		fprintf(stderr, "%s is missing a header name\n", command);
-		MainDisplayHelp();
-		exit(EXIT_FAILURE);
-	  }
-	  MainLocalHeaderName = StringCopy(argv[i]);
-	  continue;
-	}
+        if ( StringEqualsOneOf(command, "-L", "--addlocalheader", NULL) ) {
+          MainAddLocalHeaders = true;
+          i++;
+          if ( i == argc ) {
+                fprintf(stderr, "%s is missing a header name\n", command);
+                MainDisplayHelp();
+                exit(EXIT_FAILURE);
+          }
+          MainLocalHeaderName = StringCopy(argv[i]);
+          continue;
+        }
 
 
 
-	if ( StringEqualsOneOf(command, "-G", "--addglobalheader", NULL) ) {
-	  MainAddGlobalHeaders = true;
-	  i++;
-	  if ( i == argc ) {
-		fprintf(stderr, "%s is missing a header name\n", command);
-		MainDisplayHelp();
-		exit(EXIT_FAILURE);
-	  }
-	  MainGlobalHeaderName = StringCopy(argv[i]);
-	  continue;
-	}
+        if ( StringEqualsOneOf(command, "-G", "--addglobalheader", NULL) ) {
+          MainAddGlobalHeaders = true;
+          i++;
+          if ( i == argc ) {
+                fprintf(stderr, "%s is missing a header name\n", command);
+                MainDisplayHelp();
+                exit(EXIT_FAILURE);
+          }
+          MainGlobalHeaderName = StringCopy(argv[i]);
+          continue;
+        }
 
-	if ( StringEqualsOneOf(command, "-nd", "--newmoduledirectory", NULL) ) {
-	  MainCreateModuleDirectory = true;
-	  continue;
-	}
+        if ( StringEqualsOneOf(command, "-nd", "--newmoduledirectory", NULL) ) {
+          MainCreateModuleDirectory = true;
+          continue;
+        }
 
     //! Specify the module
     if ( StringEqualsOneOf(command, "-m", "--module", NULL) ) {
@@ -1432,9 +1432,9 @@ ProcessCommandLine
     }
  
     //!
-	if ( StringEqualsOneOf(command, "-c", "--createmoduledir", NULL) ) {
-	  MainCreateModuleDirectory = true;
-	  continue;
+        if ( StringEqualsOneOf(command, "-c", "--createmoduledir", NULL) ) {
+          MainCreateModuleDirectory = true;
+          continue;
     }
  
     //!
@@ -1519,58 +1519,58 @@ VerifyCommandLine
 ()
 {
   if ( MainReplaceCodeLine ) {
-	if ( MainModuleName == NULL ) {
-	  fprintf(stderr, "Missing module name\n");
-	  MainDisplayHelp();
-	  exit(EXIT_FAILURE);
-	}
+        if ( MainModuleName == NULL ) {
+          fprintf(stderr, "Missing module name\n");
+          MainDisplayHelp();
+          exit(EXIT_FAILURE);
+        }
 
-	if ( MainCodeLine == NULL ) {
-	  fprintf(stderr, "Missing code line\n");
-	  MainDisplayHelp();
-	  exit(EXIT_FAILURE);
-	}
+        if ( MainCodeLine == NULL ) {
+          fprintf(stderr, "Missing code line\n");
+          MainDisplayHelp();
+          exit(EXIT_FAILURE);
+        }
 
-	if ( MainCodeLineNumber == 0 ) {
-	  fprintf(stderr, "Missing code line number\n");
-	  MainDisplayHelp();
-	  exit(EXIT_FAILURE);
-	}
-	return;
+        if ( MainCodeLineNumber == 0 ) {
+          fprintf(stderr, "Missing code line number\n");
+          MainDisplayHelp();
+          exit(EXIT_FAILURE);
+        }
+        return;
   }
   if ( MainAddGlobalHeaders ) {
-	if ( MainGlobalHeaderName == NULL ) {
-	  fprintf(stderr, "Missing global header name\n");
-	  MainDisplayHelp();
-	  exit(EXIT_FAILURE);
-	}
+        if ( MainGlobalHeaderName == NULL ) {
+          fprintf(stderr, "Missing global header name\n");
+          MainDisplayHelp();
+          exit(EXIT_FAILURE);
+        }
     if ( MainModuleName == NULL ) {
-	  fprintf(stderr, "Missing module name\n");
-	  MainDisplayHelp();
-	  exit(EXIT_FAILURE);
-	}
+          fprintf(stderr, "Missing module name\n");
+          MainDisplayHelp();
+          exit(EXIT_FAILURE);
+        }
   }
 
   if ( MainCreateMakefile ) {
-	if ( MainTarget == NULL ) {
-	  fprintf(stderr, "Missing target name\n");
-	  MainDisplayHelp();
-	  exit(EXIT_FAILURE);
-	}
-	return;
+        if ( MainTarget == NULL ) {
+          fprintf(stderr, "Missing target name\n");
+          MainDisplayHelp();
+          exit(EXIT_FAILURE);
+        }
+        return;
   }
 
   if ( MainAddLocalHeaders ) {
-	if ( MainLocalHeaderName == NULL ) {
-	  fprintf(stderr, "Missing local header name\n");
-	  MainDisplayHelp();
-	  exit(EXIT_FAILURE);
-	}
+        if ( MainLocalHeaderName == NULL ) {
+          fprintf(stderr, "Missing local header name\n");
+          MainDisplayHelp();
+          exit(EXIT_FAILURE);
+        }
     if ( MainModuleName == NULL ) {
-	  fprintf(stderr, "Missing module name\n");
-	  MainDisplayHelp();
-	  exit(EXIT_FAILURE);
-	}
+          fprintf(stderr, "Missing module name\n");
+          MainDisplayHelp();
+          exit(EXIT_FAILURE);
+        }
   }
 
   //! Must specifiy either funcdtion nammd or data name
@@ -1590,8 +1590,8 @@ VerifyCommandLine
   }
 
   if ( MainStructName && MainModuleName == NULL ) {
-	fprintf(stderr, "A new structre requires a module\n");
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "A new structre requires a module\n");
+        exit(EXIT_FAILURE);
   }
 
   //! The Module name is the base name of the header and source file name
@@ -1602,26 +1602,30 @@ VerifyCommandLine
 
   // Check to see if we have to create a new module directory
   if ( MainNewModuleName ) {
-	if ( MainCreateModuleDirectory ) {
-	  if ( FileExists(MainNewModuleName) ) {
-		if ( ! MainOverwriteFunctionFile ) {
-		  fprintf(stderr, "Module directory %s exists\n", MainNewModuleName);
-		  exit(EXIT_FAILURE);
-		}
-	  }
-	  mkdir(MainNewModuleName, 0755);
-	}
+        if ( MainCreateModuleDirectory ) {
+          if ( FileExists(MainNewModuleName) ) {
+                if ( ! MainOverwriteFunctionFile ) {
+                  fprintf(stderr, "Module directory %s exists\n", MainNewModuleName);
+                  exit(EXIT_FAILURE);
+                }
+          }
+#ifdef LINUX          
+          mkdir(MainNewModuleName, 0755);
+#else           
+          mkdir(MainNewModuleName);
+#endif          
+        }
 
     MainHeaderName = StringConcat(MainNewModuleName, MainHeaderSuffix);
     MainSourceName = StringConcat(MainNewModuleName, MainSourceSuffix);
-	if ( FileExists(MainSourceName) && !MainOverwriteFunctionFile ) {
-	  fprintf(stderr, "%s%s exists%s\n", ColorBrightRed, MainSourceName, ColorReset);
-	  exit(EXIT_FAILURE);
-	}
-	if ( FileExists(MainHeaderName) && !MainOverwriteFunctionFile ) {
-	  fprintf(stderr, "%s%s exists%s\n", ColorBrightRed, MainHeaderName, ColorReset);
-	  exit(EXIT_FAILURE);
-	}
+        if ( FileExists(MainSourceName) && !MainOverwriteFunctionFile ) {
+          fprintf(stderr, "%s%s exists%s\n", ColorBrightRed, MainSourceName, ColorReset);
+          exit(EXIT_FAILURE);
+        }
+        if ( FileExists(MainHeaderName) && !MainOverwriteFunctionFile ) {
+          fprintf(stderr, "%s%s exists%s\n", ColorBrightRed, MainHeaderName, ColorReset);
+          exit(EXIT_FAILURE);
+        }
   }
 
   if ( MainFunctionName ) {
@@ -1631,10 +1635,10 @@ VerifyCommandLine
     } else {
       MainFilename = StringMultiConcat(MainFunctionName, NULL);
     }
-	if ( MainFunctionType == FunctionTypeC ) {
-	  MainFilename = StringConcatTo(MainFilename, MainSourceSuffix);
+        if ( MainFunctionType == FunctionTypeC ) {
+          MainFilename = StringConcatTo(MainFilename, MainSourceSuffix);
     } else {
-	  MainFilename = StringConcatTo(MainFilename, MainJavascriptSuffix);
+          MainFilename = StringConcatTo(MainFilename, MainJavascriptSuffix);
     }
     //! Don't overwrite the old file unless told to
     if ( FileExists(MainFilename) && !MainOverwriteFunctionFile) {
@@ -1663,14 +1667,15 @@ ParameterCreate
 
   parameter = (Parameter*)GetMemory(sizeof(Parameter));
   if ( InType ) {
+    
     parameter->type = StringCopy(InType);
   } else {
-	parameter->type = NULL;
+        parameter->type = NULL;
   }
   if ( InName ) {
     parameter->name = StringCopy(InName);
   } else {
-	parameter->name = NULL;
+        parameter->name = NULL;
   }
   parameter->next = NULL;
   return parameter;
@@ -2141,51 +2146,51 @@ CreateMakefile
 
   file = fopen(MainMakefileName, "wb");
   if ( NULL == file ) {
-	fprintf(stderr, "Could not open %s for writing : %s\n", MainMakefileName, strerror(errno));
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "Could not open %s for writing : %s\n", MainMakefileName, strerror(errno));
+        exit(EXIT_FAILURE);
   }
 
-  fprintf(file, "CC					= gcc\n");
-  fprintf(file, "LINK					= gcc\n");
-  fprintf(file, "CC_OPTS					= -c -g -Wall\n");
-  fprintf(file, "CC_INCS					= \n");
-  fprintf(file, "LINK_OPTS				= -g\n");
-  fprintf(file, "LINK_LIBS				= \n");
+  fprintf(file, "CC                                     = gcc\n");
+  fprintf(file, "LINK                                   = gcc\n");
+  fprintf(file, "CC_OPTS                                        = -c -g -Wall\n");
+  fprintf(file, "CC_INCS                                        = \n");
+  fprintf(file, "LINK_OPTS                              = -g\n");
+  fprintf(file, "LINK_LIBS                              = \n");
   fprintf(file, "\n");
-  fprintf(file, "TARGET					= %s\n", MainTarget);
-  fprintf(file, "OBJS					= $(sort				\\\n");
+  fprintf(file, "TARGET                                 = %s\n", MainTarget);
+  fprintf(file, "OBJS                                   = $(sort                                \\\n");
   for ( i = 0 ; i < MainMakefileObjects->stringCount; i++ ) {
-    fprintf(file, "					    %s", MainMakefileObjects->strings[i]);
-	m = (44 + strlen(MainMakefileObjects->strings[i])) / 8;
-	if ( m >= 10 ) {
-	  m = 9;
-	}
-	for ( k = m; k < 10; k++  ) {
-	  fprintf(file, "\t");
-	}
-	fprintf(file, "\\\n");
+    fprintf(file, "                                         %s", MainMakefileObjects->strings[i]);
+        m = (44 + strlen(MainMakefileObjects->strings[i])) / 8;
+        if ( m >= 10 ) {
+          m = 9;
+        }
+        for ( k = m; k < 10; k++  ) {
+          fprintf(file, "\t");
+        }
+        fprintf(file, "\\\n");
   }
-  fprintf(file, "					   )\n");
-  fprintf(file, "LIBS					= \n");
-  fprintf(file, "%%.o					: %%.c\n");
+  fprintf(file, "                                          )\n");
+  fprintf(file, "LIBS                                   = \n");
+  fprintf(file, "%%.o                                   : %%.c\n");
   fprintf(file, "\n");
-  fprintf(file, "					  @echo [CC] $<\n");
-  fprintf(file, "					  @$(CC) $(CC_OPTS) $(CC_INCS) $<\n");
+  fprintf(file, "                                         @echo [CC] $<\n");
+  fprintf(file, "                                         @$(CC) $(CC_OPTS) $(CC_INCS) $<\n");
   fprintf(file, "\n");
-  fprintf(file, ".PHONY					: $(TARGET)\n");
-  fprintf(file, "$(TARGET)				: $(OBJS)\n");
-  fprintf(file, "					  @echo [LD] $(TARGET)\n");
-  fprintf(file, "					  @$(LINK) $(LINK_OPTS) -o $(TARGET) $(OBJS) $(LINK_LIBS) $(LIBS)\n");
+  fprintf(file, ".PHONY                                 : $(TARGET)\n");
+  fprintf(file, "$(TARGET)                              : $(OBJS)\n");
+  fprintf(file, "                                         @echo [LD] $(TARGET)\n");
+  fprintf(file, "                                         @$(LINK) $(LINK_OPTS) -o $(TARGET) $(OBJS) $(LINK_LIBS) $(LIBS)\n");
   fprintf(file, "\n");
-  fprintf(file, "include				   	  depends.mk\n");
+  fprintf(file, "include                                          depends.mk\n");
   fprintf(file, "\n");
-  fprintf(file, ".PHONY					: junkclean\n");
-  fprintf(file, "junkclean				: \n");
-  fprintf(file, "					  rm -rf $(wildcard *~ *-bak);\n");
+  fprintf(file, ".PHONY                                 : junkclean\n");
+  fprintf(file, "junkclean                              : \n");
+  fprintf(file, "                                         rm -rf $(wildcard *~ *-bak);\n");
   fprintf(file, "\n");
-  fprintf(file, ".PHONY					: clean\n");
-  fprintf(file, "clean					: junkclean\n");
-  fprintf(file, "					  rm -rf $(wildcard $(OBJS) $(TARGET)\n");
+  fprintf(file, ".PHONY                                 : clean\n");
+  fprintf(file, "clean                                  : junkclean\n");
+  fprintf(file, "                                         rm -rf $(wildcard $(OBJS) $(TARGET)\n");
   fclose(file);
   fprintf(stdout, "%s created\n", MainMakefileName);
 }
@@ -2200,17 +2205,17 @@ CreateFunctionFilename
   string                                filename;
 
   if ( NULL == MainModuleName ) {
-	return NULL;
+        return NULL;
   }
 
   if ( NULL == MainFunctionName ) {
-	return NULL;
+        return NULL;
   }
 
   if ( FileExists(MainModuleName) ) {
-	filename = StringMultiConcat(MainModuleName, "/", MainFunctionName, MainSourceSuffix, NULL);
+        filename = StringMultiConcat(MainModuleName, "/", MainFunctionName, MainSourceSuffix, NULL);
   } else {
-	filename = StringMultiConcat(MainFunctionName, MainSourceSuffix, NULL);
+        filename = StringMultiConcat(MainFunctionName, MainSourceSuffix, NULL);
   }
   return filename;
 }
