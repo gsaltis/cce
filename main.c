@@ -72,6 +72,9 @@ typedef enum _FunctionType FunctionType;
 /*****************************************************************************!
  * Local Data
  *****************************************************************************/
+static bool
+MainCreateMainFile = false;
+
 bool
 MainReplaceCodeLine = false;
 
@@ -189,7 +192,7 @@ string
 MainNewModuleName = NULL;
 
 string
-MainVersion = "1.1.0";
+MainVersion = "1.1.1";
 
 bool
 MainAddGlobalHeaders = false;
@@ -206,6 +209,10 @@ MainLocalHeaderName = NULL;
 /*****************************************************************************!
  * Local Functions
  *****************************************************************************/
+void
+CreateMainFile
+(void);
+
 void
 MainCreateBlock
 (FILE* InFile, string InBlockText);
@@ -340,6 +347,10 @@ main
   MainInitialize();
   ProcessCommandLine(argc, argv);
   VerifyCommandLine();
+  if ( MainCreateMainFile ) {
+    CreateMainFile();
+    return EXIT_SUCCESS;
+  }
   if ( MainReplaceCodeLine ) {
         ReplaceCodeLine();
   } else if ( MainCreateMakefile ) {
@@ -1140,6 +1151,10 @@ ProcessCommandLine
   for ( i = 1; i < argc; i++ ) {
     command = argv[i];
 
+    if ( StringEqualsOneOf(command, "-ma", "--mainfile", NULL) ) {
+      MainCreateMainFile = true;
+      continue;
+    }
     if ( StringEqualsOneOf(command, "-se", "--structelement", NULL) ) {
           MainAddStructElements = true;
           continue;
@@ -1574,7 +1589,7 @@ VerifyCommandLine
   }
 
   //! Must specifiy either funcdtion nammd or data name
-  if ( !MainAddLocalHeaders && !MainAddGlobalHeaders && MainFunctionName == NULL && MainDataName == NULL && MainNewModuleName == NULL && MainStructName == NULL ) {
+  if ( !MainCreateMainFile && !MainAddLocalHeaders && !MainAddGlobalHeaders && MainFunctionName == NULL && MainDataName == NULL && MainNewModuleName == NULL && MainStructName == NULL ) {
     fprintf(stderr, "%sEither a global header, local header, structure name, function name, new module name or data name must be specified%s\n",
             ColorBrightRed, ColorReset);
     MainDisplayHelp();
@@ -1582,7 +1597,7 @@ VerifyCommandLine
   }
 
   //! But can't specify both
-  if ( (MainAddLocalHeaders ? 1 : 0) + (MainAddGlobalHeaders ? 1 : 0) + (MainStructName ? 1 : 0) + ((MainFunctionName ? 1 : 0) + (MainDataName ? 1 : 0) + (MainNewModuleName ? 1 : 0)) != 1) {
+  if ( (MainCreateMainFile ? 1 : 0) + (MainAddLocalHeaders ? 1 : 0) + (MainAddGlobalHeaders ? 1 : 0) + (MainStructName ? 1 : 0) + ((MainFunctionName ? 1 : 0) + (MainDataName ? 1 : 0) + (MainNewModuleName ? 1 : 0)) != 1) {
     fprintf(stderr, "%sOnly a local header, global header, structure name, function name, new module name or data name can be specified at one time%s\n",
             ColorBrightRed, ColorReset);
     MainDisplayHelp();
@@ -1732,6 +1747,7 @@ MainDisplayHelp
   fprintf(stdout, "         -M,  --createmakefile           : Specify the creation of a new Makefile\n");
   fprintf(stdout, "                                           (requirestarget name)\n");
   fprintf(stdout, "                                           (optionaly uses makefile objects\n");
+  fprintf(stdout, "         -ma, --mainfile                 : Create a empty 'main.c'\n");
   fprintf(stdout, "         -n,  --newmodule modulename     : Specify a new module\n");
   fprintf(stdout, "         -nd, --newmoduledirectory       : Specify a new module directory is to be created\n");
   fprintf(stdout, "         -N,  --linenumber               : Specify a line number which is to be replaces\n");
@@ -2220,3 +2236,57 @@ CreateFunctionFilename
   return filename;
 }
 
+
+/*****************************************************************************!
+ * Function : CreateMainFile
+ *****************************************************************************/
+void
+CreateMainFile
+(void)
+{
+  int                                   i;
+  int                                   n;
+  FILE*                                 file;
+  string                                filename = "main.c";
+  
+  if ( FileExists(filename) ) {
+    if ( ! MainOverwriteFunctionFile ) {
+      fprintf(stderr, "Could not overwrite %s.\n", filename);
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  file = fopen(filename, "wb");
+  if ( NULL == file ) {
+    fprintf(stderr, "Could not open %s : %s\n", filename, strerror(errno));
+    exit(EXIT_FAILURE);
+  }
+
+  MainCreateFileHeader(filename, file);
+  fprintf(file, "\n");
+
+  MainCreateBlock(file, "Global Headers");
+  n = sizeof(MainGlobalHeaders) / sizeof(MainGlobalHeaders[0]);
+  for ( i = 0 ; i < n ; i++ ) {
+    fprintf(file, "#include <%s>\n", MainGlobalHeaders[i]);
+  }
+  fprintf(file, "\n");
+
+  MainCreateBlock(file, "Local Headers");
+  fprintf(file, "\n");
+  MainCreateBlock(file, "Local Macros");
+  fprintf(file, "\n");
+  MainCreateBlock(file, "Local Data");
+  fprintf(file, "\n");
+  MainCreateBlock(file, "Local Functions");
+  fprintf(file, "\n");
+
+  MainCreateBlock(file, "Function : main");
+  fprintf(file, "int\n");
+  fprintf(file, "main\n");
+  fprintf(file, "(int argc, char** argv)\n");
+  fprintf(file, "{\n");
+  fprintf(file, "  return EXIT_SUCCESS;\n");
+  fprintf(file, "}\n");
+  fclose(file);
+}
