@@ -2,7 +2,7 @@ CC			= gcc
 LINK			= gcc
 INSTALL			= install
 
-CC_FLAGS		= -g -Wall -c
+CC_FLAGS		= -g -Wall -c -DLINUX
 LINK_FLAGS		= -g
 INSTALL_FLAGS		= -s
 LIBS			= -lutils
