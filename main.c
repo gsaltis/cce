@@ -192,7 +192,7 @@ string
 MainNewModuleName = NULL;
 
 string
-MainVersion = "1.1.1";
+MainVersion = "1.1.2";
 
 bool
 MainAddGlobalHeaders = false;
